@@ -1,33 +1,34 @@
 import streamlit as st
 import pandas as pd
 import os
+import json
 from streamlit_google_auth import Authenticate
 
-# --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Extraemos los secretos individualmente
+# --- 1. BYPASS DE SEGURIDAD (Creación de archivo de credenciales) ---
+# Forzamos la creación del archivo físico que la librería v1.1.8 exige
+creds_path = "client_secrets.json"
 try:
-    # Creamos el diccionario con el esquema exacto de Google
-    config = {
-        "web": {
-            "client_id": st.secrets["google_oauth"]["client_id"],
-            "client_secret": st.secrets["google_oauth"]["client_secret"],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]]
-        }
-    }
-
-    # Inicialización POR POSICIÓN (sin nombres de argumentos)
-    # Esto resuelve el error de 'unexpected keyword argument'
-    auth = Authenticate(
-        config,                               # 1. Configuración (Posicional)
-        'duoc_auth_cookie',                    # 2. Nombre de la cookie
-        st.secrets["google_oauth"]["cookie_key"], # 3. Llave de la cookie
-        st.secrets["google_oauth"]["redirect_uri"] # 4. URI de redirección
-    )
+    with open(creds_path, "w") as f:
+        json.dump({
+            "web": {
+                "client_id": st.secrets["google_oauth"]["client_id"],
+                "client_secret": st.secrets["google_oauth"]["client_secret"],
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token",
+                "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]]
+            }
+        }, f)
 except Exception as e:
-    st.error(f"Error técnico en la configuración: {e}")
-    st.stop()
+    st.error(f"Error creando archivo de seguridad: {e}")
+
+# --- 2. CONFIGURACIÓN DE LA LIBRERÍA ---
+# Ahora le pasamos el NOMBRE DEL ARCHIVO (str) para que no falle el login
+auth = Authenticate(
+    creds_path, 
+    'duoc_auth_cookie',
+    st.secrets["google_oauth"]["cookie_key"],
+    st.secrets["google_oauth"]["redirect_uri"]
+)
 
 # Verificar estado de conexión
 if not st.session_state.get('connected'):
@@ -46,10 +47,10 @@ if user_info:
             auth.logout()
         st.stop()
 else:
-    st.error("No se pudo obtener la información del usuario.")
+    st.error("No se pudo obtener información del usuario.")
     st.stop()
 
-# --- 2. CONFIGURACIÓN DE LA PÁGINA ---
+# --- 3. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Mapa Duoc UC")
 
 st.markdown("""
@@ -69,7 +70,7 @@ with col_t2:
     if st.button("Salir"):
         auth.logout()
 
-# --- 3. CARGA DE DATOS ---
+# --- 4. CARGA DE DATOS ---
 @st.cache_data(ttl=600)
 def cargar_datos_gsheets():
     try:
@@ -84,7 +85,7 @@ def cargar_datos_gsheets():
 
 df = cargar_datos_gsheets()
 
-# --- 4. INTERFAZ ---
+# --- 5. INTERFAZ ---
 st.markdown('<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;">', unsafe_allow_html=True)
 col_nav, col_busq = st.columns([5, 5])
 
@@ -92,10 +93,10 @@ with col_nav:
     seleccion = st.radio("Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
 
 with col_busq:
-    search_query = st.text_input("Buscar:", placeholder="Ej: 412 o Auditorio")
+    search_query = st.text_input("Buscar sala:", placeholder="Ej: 412 o Auditorio")
 st.markdown('</div>', unsafe_allow_html=True)
 
-# --- 5. LÓGICA DE MAPAS ---
+# --- 6. LÓGICA DE MAPAS ---
 img_path = None
 
 if search_query and not df.empty:
@@ -116,7 +117,7 @@ if search_query and not df.empty:
         elif any(x in ed_val for x in ["2", "II"]): num = "2"
         img_path = os.path.join("imagenes", f"edificio{num}.jpg")
     else:
-        st.warning(f"No encontramos '{search_query}'.")
+        st.warning(f"No hay resultados para '{search_query}'.")
 else:
     if seleccion == "Inicio":
         img_path = os.path.join("imagenes", "general.jpg")
@@ -124,7 +125,7 @@ else:
         num_sel = seleccion.split()[-1]
         img_path = os.path.join("imagenes", f"edificio{num_sel}.jpg")
 
-# --- 6. RENDERIZADO ---
+# --- 7. RENDERIZADO ---
 if img_path:
     if os.path.exists(img_path):
         st.image(img_path, use_container_width=True)
