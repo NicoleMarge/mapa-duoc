@@ -4,7 +4,6 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Creamos el diccionario con el formato exacto de Google Client Secrets
 credentials_info = {
     "web": {
         "client_id": st.secrets["google_oauth"]["client_id"],
@@ -15,37 +14,37 @@ credentials_info = {
     }
 }
 
-try:
-    # En la v1.1.8, pasamos el diccionario como primer argumento posicional
-    # Esto evita el error de 'unexpected keyword argument'
-    auth = Authenticate(
-        credentials_info,
-        cookie_name='duoc_auth_cookie',
-        cookie_key=st.secrets["google_oauth"]["cookie_key"],
-        redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
-    )
-except Exception as e:
-    st.error(f"Error crítico de inicialización: {e}")
-    st.stop()
+# Inicialización (v1.1.8)
+auth = Authenticate(
+    secret_credentials=credentials_info,
+    cookie_name='duoc_auth_cookie',
+    cookie_key=st.secrets["google_oauth"]["cookie_key"],
+    redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
+)
 
-# Revisar estado de autenticación
+# Intentar obtener información del usuario (esto reemplaza check_authenticity)
 auth.check_authenticity()
 
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
-    st.info("Bienvenido. Inicia sesión con tu cuenta institucional para acceder.")
+    st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional.")
     auth.login()
     st.stop()
 
 # Filtro de seguridad: Solo correos @duocuc.cl
-user_email = st.session_state.get('user_info', {}).get('email', '').lower()
-if not user_email.endswith('@duocuc.cl'):
-    st.error(f"Acceso denegado. El correo {user_email} no pertenece a la institución.")
-    if st.button("Cerrar Sesión"):
-        auth.logout()
+user_info = st.session_state.get('user_info')
+if user_info:
+    user_email = user_info.get('email', '').lower()
+    if not user_email.endswith('@duocuc.cl'):
+        st.error(f"Acceso denegado. El correo {user_email} no tiene permisos.")
+        if st.button("Cerrar Sesión"):
+            auth.logout()
+        st.stop()
+else:
+    st.warning("No se pudo obtener la información del usuario.")
     st.stop()
 
-# --- 2. CONFIGURACIÓN VISUAL ---
+# --- 2. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Mapa Duoc UC")
 
 st.markdown("""
@@ -56,10 +55,10 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Barra superior
+# Encabezado
 col_t1, col_t2 = st.columns([8, 2])
 with col_t1:
-    st.title("📍 Mapa de Salas")
+    st.title("📍 Buscador de Salas")
 with col_t2:
     st.write(f"👤 {user_email.split('@')[0]}")
     if st.button("Cerrar Sesión"):
