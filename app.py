@@ -4,33 +4,35 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Extraemos los valores de los secrets
+# Creamos un diccionario con las credenciales para evitar el TypeError por argumentos nombrados
 try:
-    oauth_secrets = st.secrets["google_oauth"]
-    client_id = oauth_secrets["client_id"]
-    client_secret = oauth_secrets["client_secret"]
-    redirect_uri = oauth_secrets["redirect_uri"]
-    cookie_key = oauth_secrets["cookie_key"]
+    secret_dict = {
+        "web": {
+            "client_id": st.secrets["google_oauth"]["client_id"],
+            "client_secret": st.secrets["google_oauth"]["client_secret"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]]
+        }
+    }
+    
+    # Inicialización usando el diccionario de secretos directamente
+    auth = Authenticate(
+        secret_credentials=secret_dict,
+        cookie_name='duoc_auth_cookie',
+        cookie_key=st.secrets["google_oauth"]["cookie_key"],
+        redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
+    )
 except Exception as e:
-    st.error(f"Error al leer [google_oauth] en Secrets: {e}")
+    st.error(f"Error al configurar la autenticación: {e}")
     st.stop()
-
-# Inicialización limpia de Authenticate
-# Esta configuración evita el TypeError en la mayoría de las versiones
-auth = Authenticate(
-    client_id=client_id,
-    client_secret=client_secret,
-    redirect_uri=redirect_uri,
-    cookie_name='duoc_auth_cookie',
-    cookie_key=cookie_key,
-)
 
 # Revisar estado de autenticación
 auth.check_authenticity()
 
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
-    st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional.")
+    st.info("Bienvenido. Inicia sesión con tu cuenta institucional para continuar.")
     auth.login()
     st.stop()
 
@@ -59,7 +61,7 @@ with col_t1:
     st.title("📍 Buscador de Salas")
 with col_t2:
     st.write(f"👤 {user_email.split('@')[0]}")
-    if st.button("Salir"):
+    if st.button("Cerrar Sesión"):
         auth.logout()
 
 # --- 3. CARGA DE DATOS (GOOGLE SHEETS) ---
@@ -82,10 +84,10 @@ st.markdown('<div style="background-color: #f8f9fa; padding: 20px; border-radius
 col_nav, col_busq = st.columns([5, 5])
 
 with col_nav:
-    seleccion = st.radio("Explorar Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
+    seleccion = st.radio("Explorar:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
 
 with col_busq:
-    search_query = st.text_input("¿Qué sala buscas?", placeholder="Ej: 412 o Auditorio")
+    search_query = st.text_input("Sala o nombre:", placeholder="Ej: 412, Auditorio...")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 5. LÓGICA DE MAPAS ---
@@ -101,7 +103,7 @@ if search_query and not df.empty:
     if not resultado.empty:
         res = resultado.iloc[0]
         st.success(f"✅ **{res['sala']}**: {res['nombre']}")
-        st.info(f"📍 {res['edificio']} | Piso: {res['piso']}")
+        st.info(f"📍 {res['edificio']} | Piso {res['piso']}")
         
         ed_val = str(res['edificio']).upper()
         num = "1"
@@ -109,7 +111,7 @@ if search_query and not df.empty:
         elif any(x in ed_val for x in ["2", "II"]): num = "2"
         img_path = os.path.join("imagenes", f"edificio{num}.jpg")
     else:
-        st.warning(f"No encontramos '{search_query}'.")
+        st.warning(f"No hay resultados para '{search_query}'.")
 else:
     if seleccion == "Inicio":
         img_path = os.path.join("imagenes", "general.jpg")
@@ -122,4 +124,4 @@ if img_path:
     if os.path.exists(img_path):
         st.image(img_path, use_container_width=True)
     else:
-        st.error(f"Falta archivo: {img_path}")
+        st.error(f"Archivo faltante: {img_path}")
