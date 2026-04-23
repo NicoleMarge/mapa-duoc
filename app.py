@@ -4,18 +4,30 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# En la versión 1.1.8, los nombres de los argumentos deben ser exactos.
+# En la versión 1.1.8, la librería exige una estructura de "Google Client Secret"
 try:
+    # Construimos el diccionario con el formato exacto que exige la librería
+    credentials_info = {
+        "web": {
+            "client_id": st.secrets["google_oauth"]["client_id"],
+            "client_secret": st.secrets["google_oauth"]["client_secret"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+            "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]]
+        }
+    }
+
+    # Inicialización para versión 1.1.8
+    # El primer argumento es la fuente de las credenciales
     auth = Authenticate(
-        secret_credentials_path=None, # Forzamos a que no busque un archivo JSON
-        client_id=st.secrets["google_oauth"]["client_id"],
-        client_secret=st.secrets["google_oauth"]["client_secret"],
-        redirect_uri=st.secrets["google_oauth"]["redirect_uri"],
+        secret_credentials=credentials_info,
         cookie_name='duoc_auth_cookie',
-        cookie_key=st.secrets["google_oauth"]["cookie_key"]
+        cookie_key=st.secrets["google_oauth"]["cookie_key"],
+        redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
     )
 except Exception as e:
-    st.error(f"Error técnico en la inicialización: {e}")
+    st.error(f"Error de inicialización: {e}")
     st.stop()
 
 # Revisar estado de autenticación
@@ -23,7 +35,7 @@ auth.check_authenticity()
 
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
-    st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional.")
+    st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional para acceder.")
     auth.login()
     st.stop()
 
@@ -35,7 +47,7 @@ if not user_email.endswith('@duocuc.cl'):
         auth.logout()
     st.stop()
 
-# --- 2. CONFIGURACIÓN DE LA PÁGINA ---
+# --- 2. CONFIGURACIÓN VISUAL ---
 st.set_page_config(layout="wide", page_title="Mapa Duoc UC")
 
 st.markdown("""
@@ -49,10 +61,10 @@ st.markdown("""
 # Barra superior
 col_t1, col_t2 = st.columns([8, 2])
 with col_t1:
-    st.title("📍 Buscador de Salas")
+    st.title("📍 Mapa de Salas")
 with col_t2:
     st.write(f"👤 {user_email.split('@')[0]}")
-    if st.button("Salir"):
+    if st.button("Cerrar Sesión"):
         auth.logout()
 
 # --- 3. CARGA DE DATOS (GOOGLE SHEETS) ---
@@ -75,10 +87,10 @@ st.markdown('<div style="background-color: #f8f9fa; padding: 20px; border-radius
 col_nav, col_busq = st.columns([5, 5])
 
 with col_nav:
-    seleccion = st.radio("Explorar:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
+    seleccion = st.radio("Explorar Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
 
 with col_busq:
-    search_query = st.text_input("Sala o nombre:", placeholder="Ej: 412, Auditorio...")
+    search_query = st.text_input("Buscador:", placeholder="Ej: 412, Auditorio...")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 5. LÓGICA DE MAPAS ---
@@ -102,7 +114,7 @@ if search_query and not df.empty:
         elif any(x in ed_val for x in ["2", "II"]): num = "2"
         img_path = os.path.join("imagenes", f"edificio{num}.jpg")
     else:
-        st.warning(f"No hay resultados para '{search_query}'.")
+        st.warning(f"No encontramos '{search_query}'.")
 else:
     if seleccion == "Inicio":
         img_path = os.path.join("imagenes", "general.jpg")
@@ -115,4 +127,4 @@ if img_path:
     if os.path.exists(img_path):
         st.image(img_path, use_container_width=True)
     else:
-        st.error(f"Archivo faltante: {img_path}")
+        st.error(f"Falta archivo: {img_path}")
