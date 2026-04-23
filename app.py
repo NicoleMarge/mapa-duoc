@@ -4,117 +4,125 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Los datos se extraen de los "Secrets" de Streamlit Cloud por seguridad
-auth = Authenticate(
-    secret_credentials_path=None,
-    cookie_name='duoc_auth_cookie',
-    cookie_key=st.secrets["google_oauth"]["cookie_key"],
-    client_id=st.secrets["google_oauth"]["client_id"],
-    client_secret=st.secrets["google_oauth"]["client_secret"],
-    redirect_uri=st.secrets["google_oauth"]["redirect_uri"],
-)
+# Se extraen los secretos de Streamlit Cloud. 
+# Si falta alguno, la app mostrará un mensaje claro de configuración.
+try:
+    auth = Authenticate(
+        secret_credentials_path=None,
+        cookie_name='duoc_auth_cookie',
+        cookie_key=st.secrets["google_oauth"]["cookie_key"],
+        client_id=st.secrets["google_oauth"]["client_id"],
+        client_secret=st.secrets["google_oauth"]["client_secret"],
+        redirect_uri=st.secrets["google_oauth"]["redirect_uri"],
+    )
+except Exception:
+    st.error("🚨 Error de Configuración: Revisa que los 'Secrets' en Streamlit Cloud tengan el bloque [google_oauth] completo.")
+    st.stop()
 
-# Revisar si el usuario ya está conectado
+# Revisar autenticación
 auth.check_authenticity()
 
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
-    st.info("Inicia sesión con tu correo institucional para continuar.")
+    st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional para acceder al mapa de la sede.")
     auth.login()
     st.stop()
 
-# Validación de dominio de ciberseguridad: solo correos @duocuc.cl
-user_email = st.session_state.get('user_info', {}).get('email', '')
+# Filtro de seguridad: Solo dominios autorizados
+user_email = st.session_state.get('user_info', {}).get('email', '').lower()
 if not user_email.endswith('@duocuc.cl'):
-    st.error(f"Acceso denegado. El correo {user_email} no tiene permisos.")
+    st.error(f"Acceso denegado. El correo {user_email} no pertenece a la institución.")
     if st.button("Cerrar Sesión"):
         auth.logout()
     st.stop()
 
-# --- 2. CONFIGURACIÓN DE LA PÁGINA ---
+# --- 2. CONFIGURACIÓN VISUAL ---
 st.set_page_config(layout="wide", page_title="Mapa Duoc UC")
 
 st.markdown("""
     <style>
     .main { background-color: #ffffff; }
     header {visibility: hidden;}
-    .stTitle { font-size: 35px !important; font-weight: bold; padding-bottom: 20px; }
+    .stTitle { font-size: 32px !important; font-weight: bold; color: #003366; }
+    .stRadio > div { flex-direction: row; justify-content: center; }
     </style>
     """, unsafe_allow_html=True)
 
-# Encabezado con Logout
-col_t1, col_t2 = st.columns([9, 1])
+# Barra superior con usuario y salida
+col_t1, col_t2 = st.columns([8, 2])
 with col_t1:
-    st.title("Mapa Duoc UC")
+    st.title("📍 Mapa de Salas")
 with col_t2:
-    if st.button("Salir"):
+    st.write(f"👤 {user_email.split('@')[0]}")
+    if st.button("Cerrar Sesión"):
         auth.logout()
 
-# --- 3. CARGA DE DATOS DESDE GOOGLE SHEETS ---
-@st.cache_data
+# --- 3. CARGA DINÁMICA (GOOGLE SHEETS) ---
+@st.cache_data(ttl=600) # Se actualiza cada 10 minutos
 def cargar_datos_gsheets():
-    # Debes poner el ID de tu Google Sheet en los Secrets como 'gsheet_url'
-    # O reemplazarlo aquí directamente si es público
     try:
-        # Formato para leer Google Sheets como CSV directamente
+        if "gsheet_id" not in st.secrets:
+            st.error("Falta el 'gsheet_id' en los Secrets.")
+            return pd.DataFrame()
+            
         sheet_id = st.secrets["gsheet_id"] 
         url = f"https://docs.google.com/spreadsheets/d/{sheet_id}/export?format=csv"
         df = pd.read_csv(url)
         df.columns = df.columns.str.strip().str.lower()
         return df
     except Exception as e:
-        st.error("Error conectando con la base de datos de salas.")
-        return pd.DataFrame(columns=['sala', 'edificio', 'piso', 'nombre'])
+        st.error(f"Error al conectar con la base de datos: {e}")
+        return pd.DataFrame()
 
 df = cargar_datos_gsheets()
 
-# --- 4. INTERFAZ: NAVEGACIÓN Y BÚSQUEDA ---
-st.markdown('<div style="background-color: #f0f2f6; padding: 15px; border-radius: 10px; border: 1px solid #d1d1d1;">', unsafe_allow_html=True)
-col_nav, col_busq = st.columns([6, 4])
+# --- 4. BUSCADOR E INTERFAZ ---
+st.markdown('<div style="background-color: #f8f9fa; padding: 20px; border-radius: 10px; border: 1px solid #e0e0e0;">', unsafe_allow_html=True)
+col_nav, col_busq = st.columns([5, 5])
 
 with col_nav:
-    seleccion = st.radio("Selecciona Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
+    seleccion = st.radio("Explorar por edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], index=0)
 
 with col_busq:
-    search_query = st.text_input("Buscador de salas:", placeholder="Ej: 412 o Sala de Computación...")
+    search_query = st.text_input("¿Qué sala buscas?", placeholder="Ej: 412, Auditorio, Laboratorio...")
 st.markdown('</div>', unsafe_allow_html=True)
 
-st.markdown("---")
-
-# --- 5. LÓGICA DE VISUALIZACIÓN ---
+# --- 5. LÓGICA DE MAPAS ---
 img_path = None
 
-if search_query:
-    if not df.empty and 'sala' in df.columns:
-        query = search_query.strip().upper()
-        resultado = df[
-            df['sala'].astype(str).str.upper().str.contains(query, na=False) | 
-            df['nombre'].astype(str).str.upper().str.contains(query, na=False)
-        ]
+if search_query and not df.empty:
+    query = search_query.strip().upper()
+    # Búsqueda en columna sala o nombre
+    resultado = df[
+        df['sala'].astype(str).str.upper().str.contains(query, na=False) | 
+        df['nombre'].astype(str).str.upper().str.contains(query, na=False)
+    ]
+    
+    if not resultado.empty:
+        res = resultado.iloc[0]
+        st.success(f"✅ **{res['sala']}**: {res['nombre']}")
+        st.info(f"📍 **{res['edificio']}** | **{res['piso']}**")
         
-        if not resultado.empty:
-            res = resultado.iloc[0]
-            st.success(f"📍 **{res['sala']} - {res['nombre']}**")
-            st.info(f"Ubicación: **{res['edificio']}**, Piso: **{res['piso']}**")
-            
-            ed_str = str(res['edificio']).upper()
-            num = "1"
-            if "III" in ed_str or "3" in ed_str: num = "3"
-            elif "II" in ed_str or "2" in ed_str: num = "2"
-            img_path = f"imagenes/edificio{num}.jpg"
-        else:
-            st.error(f"No se encontró la sala '{search_query}'.")
+        # Lógica de imagen según edificio
+        ed_val = str(res['edificio']).upper()
+        num = "1"
+        if any(x in ed_val for x in ["III", "3"]): num = "3"
+        elif any(x in ed_val for x in ["II", "2"]): num = "2"
+        img_path = os.path.join("imagenes", f"edificio{num}.jpg")
+    else:
+        st.warning(f"No encontramos resultados para '{search_query}'.")
 else:
     if seleccion == "Inicio":
-        st.markdown("<h3 style='text-align: center;'>Plano General de Sede</h3>", unsafe_allow_html=True)
-        img_path = "imagenes/general.jpg" 
+        st.markdown("<h4 style='text-align: center;'>Plano General de la Sede</h4>", unsafe_allow_html=True)
+        img_path = os.path.join("imagenes", "general.jpg")
     else:
         num_sel = seleccion.split()[-1]
-        st.markdown(f"<h3 style='text-align: center;'>Vista: {seleccion}</h3>", unsafe_allow_html=True)
-        img_path = f"imagenes/edificio{num_sel}.jpg"
+        st.markdown(f"<h4 style='text-align: center;'>{seleccion}</h4>", unsafe_allow_html=True)
+        img_path = os.path.join("imagenes", f"edificio{num_sel}.jpg")
 
-# --- 6. MOSTRAR IMAGEN ---
-if img_path and os.path.exists(img_path):
-    st.image(img_path, use_container_width=True)
-elif img_path:
-    st.warning("Mapa no disponible para esta selección.")
+# --- 6. RENDERIZADO DE IMAGEN CON VALIDACIÓN ---
+if img_path:
+    if os.path.exists(img_path):
+        st.image(img_path, use_container_width=True)
+    else:
+        st.error(f"❌ Error de servidor: No se encuentra el archivo '{img_path}'. Verifica que la carpeta 'imagenes' esté en la raíz de GitHub.")
