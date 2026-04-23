@@ -4,29 +4,29 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Extraemos los secretos individualmente para asegurar que se lean bien
+# Extraemos los secretos
 client_id = st.secrets["google_oauth"]["client_id"]
 client_secret = st.secrets["google_oauth"]["client_secret"]
 redirect_uri = st.secrets["google_oauth"]["redirect_uri"]
 cookie_key = st.secrets["google_oauth"]["cookie_key"]
 
-# Inicialización (v1.1.8) - USANDO ARGUMENTOS POSICIONALES
-# Esto evita el error de "unexpected keyword argument"
+# Inicialización (v1.1.8)
+# En esta versión, la validación ocurre al instanciar o mediante st.session_state
 auth = Authenticate(
     client_id,
     client_secret,
     redirect_uri,
-    'duoc_auth_cookie',  # cookie_name
-    cookie_key           # cookie_key
+    'duoc_auth_cookie',
+    cookie_key
 )
 
-# Revisar estado de autenticación
-auth.check_authenticity()
+# ELIMINADO: auth.check_authenticity() ya no existe en v1.1.8
 
+# Verificamos si el usuario está conectado usando el session_state
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
     st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional.")
-    auth.login()
+    auth.login() # Esto renderiza el botón de Google
     st.stop()
 
 # Filtro de seguridad: Solo correos @duocuc.cl
@@ -39,7 +39,8 @@ if user_info:
             auth.logout()
         st.stop()
 else:
-    st.error("No se pudo validar la identidad.")
+    # Si estamos "conectados" pero no hay user_info, forzamos logout por seguridad
+    auth.logout()
     st.stop()
 
 # --- 2. CONFIGURACIÓN DE LA PÁGINA ---
