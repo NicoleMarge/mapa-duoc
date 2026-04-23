@@ -4,24 +4,25 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Extraemos los datos de secrets primero para asegurar que existen y son strings
+# Extraemos los valores de los secrets
 try:
-    client_id = str(st.secrets["google_oauth"]["client_id"])
-    client_secret = str(st.secrets["google_oauth"]["client_secret"])
-    redirect_uri = str(st.secrets["google_oauth"]["redirect_uri"])
-    cookie_key = str(st.secrets["google_oauth"]["cookie_key"])
-except KeyError as e:
-    st.error(f"Error: No se encontró la llave {e} en los Secrets de Streamlit.")
+    oauth_secrets = st.secrets["google_oauth"]
+    client_id = oauth_secrets["client_id"]
+    client_secret = oauth_secrets["client_secret"]
+    redirect_uri = oauth_secrets["redirect_uri"]
+    cookie_key = oauth_secrets["cookie_key"]
+except Exception as e:
+    st.error(f"Error al leer [google_oauth] en Secrets: {e}")
     st.stop()
 
-# Inicialización de Autenticación
-# Nota: Algunos entornos requieren que no se pasen parámetros nulos
+# Inicialización limpia de Authenticate
+# Esta configuración evita el TypeError en la mayoría de las versiones
 auth = Authenticate(
-    cookie_name='duoc_auth_cookie',
-    cookie_key=cookie_key,
     client_id=client_id,
     client_secret=client_secret,
-    redirect_uri=redirect_uri
+    redirect_uri=redirect_uri,
+    cookie_name='duoc_auth_cookie',
+    cookie_key=cookie_key,
 )
 
 # Revisar estado de autenticación
@@ -44,7 +45,6 @@ if not user_email.endswith('@duocuc.cl'):
 # --- 2. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Mapa Duoc UC")
 
-# Estilos CSS
 st.markdown("""
     <style>
     .main { background-color: #ffffff; }
