@@ -4,25 +4,23 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-credentials_info = {
-    "web": {
-        "client_id": st.secrets["google_oauth"]["client_id"],
-        "client_secret": st.secrets["google_oauth"]["client_secret"],
-        "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-        "token_uri": "https://oauth2.googleapis.com/token",
-        "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]]
-    }
-}
+# Extraemos los secretos individualmente para asegurar que se lean bien
+client_id = st.secrets["google_oauth"]["client_id"]
+client_secret = st.secrets["google_oauth"]["client_secret"]
+redirect_uri = st.secrets["google_oauth"]["redirect_uri"]
+cookie_key = st.secrets["google_oauth"]["cookie_key"]
 
-# Inicialización (v1.1.8)
+# Inicialización (v1.1.8) - USANDO ARGUMENTOS POSICIONALES
+# Esto evita el error de "unexpected keyword argument"
 auth = Authenticate(
-    secret_credentials=credentials_info,
-    cookie_name='duoc_auth_cookie',
-    cookie_key=st.secrets["google_oauth"]["cookie_key"],
-    redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
+    client_id,
+    client_secret,
+    redirect_uri,
+    'duoc_auth_cookie',  # cookie_name
+    cookie_key           # cookie_key
 )
 
-# Intentar obtener información del usuario (esto reemplaza check_authenticity)
+# Revisar estado de autenticación
 auth.check_authenticity()
 
 if not st.session_state.get('connected'):
@@ -41,7 +39,7 @@ if user_info:
             auth.logout()
         st.stop()
 else:
-    st.warning("No se pudo obtener la información del usuario.")
+    st.error("No se pudo validar la identidad.")
     st.stop()
 
 # --- 2. CONFIGURACIÓN DE LA PÁGINA ---
@@ -61,7 +59,7 @@ with col_t1:
     st.title("📍 Buscador de Salas")
 with col_t2:
     st.write(f"👤 {user_email.split('@')[0]}")
-    if st.button("Cerrar Sesión"):
+    if st.button("Salir"):
         auth.logout()
 
 # --- 3. CARGA DE DATOS ---
@@ -84,10 +82,10 @@ st.markdown('<div style="background-color: #f8f9fa; padding: 20px; border-radius
 col_nav, col_busq = st.columns([5, 5])
 
 with col_nav:
-    seleccion = st.radio("Explorar Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
+    seleccion = st.radio("Ver Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
 
 with col_busq:
-    search_query = st.text_input("Buscador:", placeholder="Ej: 412, Auditorio...")
+    search_query = st.text_input("Buscar sala:", placeholder="Ej: 412 o Auditorio")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 5. LÓGICA DE MAPAS ---
@@ -111,7 +109,7 @@ if search_query and not df.empty:
         elif any(x in ed_val for x in ["2", "II"]): num = "2"
         img_path = os.path.join("imagenes", f"edificio{num}.jpg")
     else:
-        st.warning(f"No encontramos '{search_query}'.")
+        st.warning(f"No hay resultados para '{search_query}'.")
 else:
     if seleccion == "Inicio":
         img_path = os.path.join("imagenes", "general.jpg")
