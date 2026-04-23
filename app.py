@@ -4,10 +4,10 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# En la v1.1.8, para evitar que busque un archivo, debemos pasarle el diccionario
-# directamente bajo el argumento 'secret_credentials'.
+# Extraemos los secretos individualmente
 try:
-    credentials_dict = {
+    # Creamos el diccionario con el esquema exacto de Google
+    config = {
         "web": {
             "client_id": st.secrets["google_oauth"]["client_id"],
             "client_secret": st.secrets["google_oauth"]["client_secret"],
@@ -17,17 +17,19 @@ try:
         }
     }
 
+    # Inicialización POR POSICIÓN (sin nombres de argumentos)
+    # Esto resuelve el error de 'unexpected keyword argument'
     auth = Authenticate(
-        secret_credentials=credentials_dict, # Pasamos el diccionario completo aquí
-        cookie_name='duoc_auth_cookie',
-        cookie_key=st.secrets["google_oauth"]["cookie_key"],
-        redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
+        config,                               # 1. Configuración (Posicional)
+        'duoc_auth_cookie',                    # 2. Nombre de la cookie
+        st.secrets["google_oauth"]["cookie_key"], # 3. Llave de la cookie
+        st.secrets["google_oauth"]["redirect_uri"] # 4. URI de redirección
     )
 except Exception as e:
-    st.error(f"Error de configuración: {e}")
+    st.error(f"Error técnico en la configuración: {e}")
     st.stop()
 
-# Verificar conexión
+# Verificar estado de conexión
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
     st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional.")
@@ -39,12 +41,12 @@ user_info = st.session_state.get('user_info')
 if user_info:
     user_email = user_info.get('email', '').lower()
     if not user_email.endswith('@duocuc.cl'):
-        st.error(f"Acceso denegado. El correo {user_email} no pertenece a la institución.")
+        st.error(f"Acceso denegado. El correo {user_email} no tiene permisos.")
         if st.button("Cerrar Sesión"):
             auth.logout()
         st.stop()
 else:
-    st.error("Error al recuperar información del usuario.")
+    st.error("No se pudo obtener la información del usuario.")
     st.stop()
 
 # --- 2. CONFIGURACIÓN DE LA PÁGINA ---
@@ -58,7 +60,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# Encabezado
+# Barra superior
 col_t1, col_t2 = st.columns([8, 2])
 with col_t1:
     st.title("📍 Buscador de Salas")
@@ -67,7 +69,7 @@ with col_t2:
     if st.button("Salir"):
         auth.logout()
 
-# --- 3. CARGA DE DATOS (GOOGLE SHEETS) ---
+# --- 3. CARGA DE DATOS ---
 @st.cache_data(ttl=600)
 def cargar_datos_gsheets():
     try:
@@ -87,10 +89,10 @@ st.markdown('<div style="background-color: #f8f9fa; padding: 20px; border-radius
 col_nav, col_busq = st.columns([5, 5])
 
 with col_nav:
-    seleccion = st.radio("Explorar:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
+    seleccion = st.radio("Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
 
 with col_busq:
-    search_query = st.text_input("Sala o nombre:", placeholder="Ej: 412, Auditorio...")
+    search_query = st.text_input("Buscar:", placeholder="Ej: 412 o Auditorio")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 5. LÓGICA DE MAPAS ---
