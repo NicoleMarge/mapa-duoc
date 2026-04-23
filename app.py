@@ -4,29 +4,34 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Extraemos los secretos
-client_id = st.secrets["google_oauth"]["client_id"]
-client_secret = st.secrets["google_oauth"]["client_secret"]
-redirect_uri = st.secrets["google_oauth"]["redirect_uri"]
-cookie_key = st.secrets["google_oauth"]["cookie_key"]
+# En la v1.1.8, para evitar que busque un archivo, debemos pasarle el diccionario
+# directamente bajo el argumento 'secret_credentials'.
+try:
+    credentials_dict = {
+        "web": {
+            "client_id": st.secrets["google_oauth"]["client_id"],
+            "client_secret": st.secrets["google_oauth"]["client_secret"],
+            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+            "token_uri": "https://oauth2.googleapis.com/token",
+            "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]]
+        }
+    }
 
-# Inicialización (v1.1.8)
-# En esta versión, la validación ocurre al instanciar o mediante st.session_state
-auth = Authenticate(
-    client_id,
-    client_secret,
-    redirect_uri,
-    'duoc_auth_cookie',
-    cookie_key
-)
+    auth = Authenticate(
+        secret_credentials=credentials_dict, # Pasamos el diccionario completo aquí
+        cookie_name='duoc_auth_cookie',
+        cookie_key=st.secrets["google_oauth"]["cookie_key"],
+        redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
+    )
+except Exception as e:
+    st.error(f"Error de configuración: {e}")
+    st.stop()
 
-# ELIMINADO: auth.check_authenticity() ya no existe en v1.1.8
-
-# Verificamos si el usuario está conectado usando el session_state
+# Verificar conexión
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
     st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional.")
-    auth.login() # Esto renderiza el botón de Google
+    auth.login()
     st.stop()
 
 # Filtro de seguridad: Solo correos @duocuc.cl
@@ -34,13 +39,12 @@ user_info = st.session_state.get('user_info')
 if user_info:
     user_email = user_info.get('email', '').lower()
     if not user_email.endswith('@duocuc.cl'):
-        st.error(f"Acceso denegado. El correo {user_email} no tiene permisos.")
+        st.error(f"Acceso denegado. El correo {user_email} no pertenece a la institución.")
         if st.button("Cerrar Sesión"):
             auth.logout()
         st.stop()
 else:
-    # Si estamos "conectados" pero no hay user_info, forzamos logout por seguridad
-    auth.logout()
+    st.error("Error al recuperar información del usuario.")
     st.stop()
 
 # --- 2. CONFIGURACIÓN DE LA PÁGINA ---
@@ -63,7 +67,7 @@ with col_t2:
     if st.button("Salir"):
         auth.logout()
 
-# --- 3. CARGA DE DATOS ---
+# --- 3. CARGA DE DATOS (GOOGLE SHEETS) ---
 @st.cache_data(ttl=600)
 def cargar_datos_gsheets():
     try:
@@ -83,10 +87,10 @@ st.markdown('<div style="background-color: #f8f9fa; padding: 20px; border-radius
 col_nav, col_busq = st.columns([5, 5])
 
 with col_nav:
-    seleccion = st.radio("Ver Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
+    seleccion = st.radio("Explorar:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
 
 with col_busq:
-    search_query = st.text_input("Buscar sala:", placeholder="Ej: 412 o Auditorio")
+    search_query = st.text_input("Sala o nombre:", placeholder="Ej: 412, Auditorio...")
 st.markdown('</div>', unsafe_allow_html=True)
 
 # --- 5. LÓGICA DE MAPAS ---
@@ -110,7 +114,7 @@ if search_query and not df.empty:
         elif any(x in ed_val for x in ["2", "II"]): num = "2"
         img_path = os.path.join("imagenes", f"edificio{num}.jpg")
     else:
-        st.warning(f"No hay resultados para '{search_query}'.")
+        st.warning(f"No encontramos '{search_query}'.")
 else:
     if seleccion == "Inicio":
         img_path = os.path.join("imagenes", "general.jpg")
