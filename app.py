@@ -4,27 +4,18 @@ import os
 from streamlit_google_auth import Authenticate
 
 # --- 1. CONFIGURACIÓN DE SEGURIDAD (OAuth) ---
-# Creamos un diccionario con las credenciales para evitar el TypeError por argumentos nombrados
+# En la versión 1.1.8, los nombres de los argumentos deben ser exactos.
 try:
-    secret_dict = {
-        "web": {
-            "client_id": st.secrets["google_oauth"]["client_id"],
-            "client_secret": st.secrets["google_oauth"]["client_secret"],
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token",
-            "redirect_uris": [st.secrets["google_oauth"]["redirect_uri"]]
-        }
-    }
-    
-    # Inicialización usando el diccionario de secretos directamente
     auth = Authenticate(
-        secret_credentials=secret_dict,
+        secret_credentials_path=None, # Forzamos a que no busque un archivo JSON
+        client_id=st.secrets["google_oauth"]["client_id"],
+        client_secret=st.secrets["google_oauth"]["client_secret"],
+        redirect_uri=st.secrets["google_oauth"]["redirect_uri"],
         cookie_name='duoc_auth_cookie',
-        cookie_key=st.secrets["google_oauth"]["cookie_key"],
-        redirect_uri=st.secrets["google_oauth"]["redirect_uri"]
+        cookie_key=st.secrets["google_oauth"]["cookie_key"]
     )
 except Exception as e:
-    st.error(f"Error al configurar la autenticación: {e}")
+    st.error(f"Error técnico en la inicialización: {e}")
     st.stop()
 
 # Revisar estado de autenticación
@@ -32,7 +23,7 @@ auth.check_authenticity()
 
 if not st.session_state.get('connected'):
     st.title("📍 Mapa Institucional Duoc UC")
-    st.info("Bienvenido. Inicia sesión con tu cuenta institucional para continuar.")
+    st.info("Bienvenido. Por favor, inicia sesión con tu cuenta institucional.")
     auth.login()
     st.stop()
 
@@ -61,7 +52,7 @@ with col_t1:
     st.title("📍 Buscador de Salas")
 with col_t2:
     st.write(f"👤 {user_email.split('@')[0]}")
-    if st.button("Cerrar Sesión"):
+    if st.button("Salir"):
         auth.logout()
 
 # --- 3. CARGA DE DATOS (GOOGLE SHEETS) ---
