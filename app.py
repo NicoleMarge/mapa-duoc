@@ -6,27 +6,30 @@ from streamlit_google_auth import Authenticate
 # --- 1. CONFIGURACIÓN DE LA PÁGINA ---
 st.set_page_config(layout="wide", page_title="Mapa Duoc UC", page_icon="📍")
 
-# --- 2. INICIALIZACIÓN DE AUTENTICACIÓN (SOLUCIÓN AL TYPEERROR) ---
-# Pasamos los valores directamente en orden para evitar conflictos de nombres de argumentos
-auth = Authenticate(
-    st.secrets["google_oauth"]["client_id"],
-    st.secrets["google_oauth"]["client_secret"],
-    st.secrets["google_oauth"]["redirect_uri"],
-    'duoc_auth_cookie', # cookie_name
-    st.secrets["google_oauth"]["cookie_key"], # key
-    1 # cookie_expiry_days
-)
+# --- 2. INICIALIZACIÓN DE AUTENTICACIÓN ---
+# Usamos un diccionario para pasar los parámetros. 
+# Esto suele resolver los TypeError de argumentos inesperados.
+auth_config = {
+    "client_id": st.secrets["google_oauth"]["client_id"],
+    "client_secret": st.secrets["google_oauth"]["client_secret"],
+    "redirect_uri": st.secrets["google_oauth"]["redirect_uri"],
+    "cookie_name": "duoc_auth_cookie",
+    "key": st.secrets["google_oauth"]["cookie_key"],
+    "cookie_expiry_days": 1
+}
 
-# Verificar si el usuario ya está autenticado
+# Inicializamos pasando el diccionario completo
+auth = Authenticate(**auth_config)
+
+# Verificar conexión
 auth.check_authenticity()
 
 if not st.session_state.get('connected'):
-    # PANTALLA DE ACCESO
     st.title("📍 Mapa Institucional Duoc UC")
     st.markdown("---")
-    st.info("Bienvenido. Para acceder, por favor inicia sesión con tu cuenta institucional de Google.")
+    st.info("Bienvenido. Para acceder al buscador, inicia sesión con tu cuenta institucional de Google.")
     
-    # Este botón abrirá la ventana oficial de Google para pedir usuario y contraseña
+    # Este botón activará el flujo de usuario/contraseña oficial de Google
     auth.login()
     st.stop()
 
@@ -35,16 +38,16 @@ user_info = st.session_state.get('user_info')
 if user_info:
     user_email = user_info.get('email', '').lower()
     if not user_email.endswith('@duocuc.cl'):
-        st.error(f"🚫 Acceso denegado. El correo {user_email} no pertenece a la institución.")
-        if st.button("Cerrar Sesión e intentar con cuenta Duoc"):
+        st.error(f"🚫 Acceso denegado. El correo {user_email} no es institucional.")
+        if st.button("Intentar con cuenta Duoc"):
             auth.logout()
             st.rerun()
         st.stop()
 else:
-    st.error("No se pudo recuperar la información del perfil.")
+    st.error("Error al obtener perfil de usuario.")
     st.stop()
 
-# --- 4. DISEÑO Y BUSCADOR (ÁREA PRIVADA) ---
+# --- 4. INTERFAZ PRIVADA ---
 st.markdown("""
     <style>
     header {visibility: hidden;}
@@ -54,14 +57,14 @@ st.markdown("""
 
 col_t1, col_t2 = st.columns([8, 2])
 with col_t1:
-    st.title("🔍 Buscador de Salas y Dependencias")
+    st.title("🔍 Buscador de Salas")
 with col_t2:
     st.write(f"👤 {user_email.split('@')[0]}")
     if st.button("Cerrar Sesión"):
         auth.logout()
         st.rerun()
 
-# --- 5. CONEXIÓN A GOOGLE SHEETS ---
+# --- 5. CARGA DE DATOS (Google Sheets) ---
 @st.cache_data(ttl=600)
 def cargar_datos():
     try:
@@ -71,26 +74,25 @@ def cargar_datos():
         df.columns = df.columns.str.strip().str.lower()
         return df
     except Exception as e:
-        st.error("Error al conectar con la base de datos de salas.")
+        st.error("Error al conectar con la base de datos.")
         return pd.DataFrame()
 
 df = cargar_datos()
 
-# --- 6. INTERFAZ DE BÚSQUEDA ---
+# --- 6. BUSCADOR Y MAPAS ---
 st.markdown('---')
 col_nav, col_busq = st.columns([4, 6])
 
 with col_nav:
-    seleccion = st.radio("Ver Edificios:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
+    seleccion = st.radio("Edificio:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True)
 
 with col_busq:
-    search_query = st.text_input("Busca una sala o lugar:", placeholder="Ej: 412, Auditorio...")
+    search_query = st.text_input("Buscar sala o dependencia:", placeholder="Ej: 412, Auditorio...")
 
 img_path = None
 
 if search_query and not df.empty:
     query = search_query.strip().upper()
-    # Filtrar en las columnas del Excel
     resultado = df[
         df['sala'].astype(str).str.upper().str.contains(query, na=False) | 
         df['nombre'].astype(str).str.upper().str.contains(query, na=False)
@@ -101,7 +103,7 @@ if search_query and not df.empty:
         st.success(f"✅ **Sala {res['sala']}**: {res['nombre']}")
         st.info(f"📍 {res['edificio']} | Piso {res['piso']}")
         
-        # Lógica de imágenes
+        # Lógica de imágenes por edificio
         ed_val = str(res['edificio']).upper()
         num = "1"
         if any(x in ed_val for x in ["3", "III"]): num = "3"
@@ -122,4 +124,4 @@ if img_path:
     if os.path.exists(img_path):
         st.image(img_path, use_container_width=True)
     else:
-        st.error(f"Archivo de imagen no encontrado: {img_path}")
+        st.error(f"⚠️ Imagen no encontrada: {img_path}")
