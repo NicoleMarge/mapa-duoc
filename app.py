@@ -110,8 +110,8 @@ with cat_cols[0]:
 with cat_cols[1]:
     st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baños",))
 with cat_cols[2]:
-    # Modificado para forzar la búsqueda en el Edificio III
-    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE EDIFICIO III",))
+    # AHORA BUSCA SOLO "CASE" PARA QUE COINCIDA CON LA BASE DE DATOS
+    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
 with cat_cols[3]:
     st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
 with cat_cols[4]:
@@ -125,21 +125,21 @@ st.markdown("---")
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 
-# Ahora leemos la query sin importar si estamos en Inicio
 query_actual = st.session_state["busqueda_sala"]
 
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
     
-    # Buscamos coincidencias generales
+    # Buscamos coincidencias en el DataFrame
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
-        # Priorización específica para CASE
-        if "case" in q:
-            filtro_ed3 = resultado[resultado.apply(lambda row: 'edificio iii' in str(row.values).lower(), axis=1)]
-            if not filtro_ed3.empty:
-                res = filtro_ed3.iloc[0]
+        # LÓGICA DE PRIORIDAD PARA EL BOTÓN CASE
+        if q == "case":
+            # Si hay varios "CASE", buscamos específicamente el del Edificio III
+            filtro_prioridad = resultado[resultado.apply(lambda row: 'edificio iii' in str(row.values).lower(), axis=1)]
+            if not filtro_prioridad.empty:
+                res = filtro_prioridad.iloc[0]
             else:
                 res = resultado.iloc[0]
         else:
@@ -147,6 +147,7 @@ if query_actual and not df.empty:
 
         edificio_nom = str(res.get('edificio', 'Edificio 1'))
         
+        # Mostrar el banner verde de éxito
         st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
 
         col_info, col_mapa = st.columns([4, 6])
@@ -168,7 +169,7 @@ if query_actual and not df.empty:
         st.warning(f"No se encontró información para '{query_actual}'")
 
 else:
-    # Vista de navegación (Solo si el buscador está vacío)
+    # Si no hay búsqueda, mostramos el mapa según el selector de radio
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
@@ -179,5 +180,3 @@ else:
     
     if os.path.exists(img):
         st.image(img, use_container_width=True)
-    else:
-        st.error(f"No se encontró la imagen: {img}")
