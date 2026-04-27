@@ -14,7 +14,6 @@ st.markdown("""
     .main { background-color: #ffffff; }
     .stTitle { font-size: 35px !important; font-weight: bold; padding-bottom: 20px; }
     
-    /* Estilo para etiquetas de categorías más estético */
     .categoria-tag {
         display: inline-block;
         padding: 6px 14px;
@@ -69,17 +68,38 @@ def normalizar_edificio(nombre):
     return nombre.lower().replace(" ", "")
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR (NAVEGACIÓN Y BOTONES)
+# 3. INTERFAZ SUPERIOR (LÓGICA DE LIMPIEZA)
 # ==========================================
+
+# Creamos una función para limpiar el buscador al hacer clic en los edificios
+def limpiar_buscador():
+    st.session_state["busqueda_sala"] = ""
+
 col_nav, col_bus = st.columns([6, 4])
 
 with col_nav:
-    seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True, label_visibility="collapsed")
+    # Si seleccionamos un edificio, se dispara 'limpiar_buscador'
+    seleccion_mapa = st.radio(
+        "Navegación:", 
+        ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
+        horizontal=True, 
+        label_visibility="collapsed",
+        on_change=limpiar_buscador
+    )
 
 with col_bus:
-    query = st.text_input("Buscador:", placeholder="Busca tu sala (ej: LC3)...", label_visibility="collapsed")
+    # Vinculamos el texto del buscador al session_state
+    if "busqueda_sala" not in st.session_state:
+        st.session_state["busqueda_sala"] = ""
+    
+    query = st.text_input(
+        "Buscador:", 
+        placeholder="Busca tu sala (ej: LC3)...", 
+        label_visibility="collapsed",
+        key="busqueda_sala"
+    )
 
-# --- CATEGORÍAS ACTUALIZADAS (CON ALIMENTACIÓN) ---
+# --- CATEGORÍAS ---
 st.markdown("""
     <div>
         <span class="categoria-tag">📖 Salas</span>
@@ -96,6 +116,8 @@ st.markdown("---")
 # ==========================================
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
+
+# Solo buscamos sala SI hay algo escrito. Si acabas de cambiar de edificio, query estará vacío.
 if query and not df.empty:
     q = query.strip().lower()
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
@@ -124,7 +146,7 @@ if query and not df.empty:
         st.warning(f"No se encontró información para '{query}'")
 
 else:
-    # Vista por defecto según navegación
+    # Vista por defecto según navegación (Se activa al cambiar de botón)
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
@@ -135,3 +157,5 @@ else:
     
     if os.path.exists(img):
         st.image(img, use_container_width=True)
+    else:
+        st.error(f"No se encontró la imagen: {img}")
