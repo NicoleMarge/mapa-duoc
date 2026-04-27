@@ -14,7 +14,6 @@ st.markdown("""
     .main { background-color: #ffffff; }
     .stTitle { font-size: 35px !important; font-weight: bold; padding-bottom: 20px; }
     
-    /* Estilo para etiquetas de categorías más estético */
     .categoria-tag {
         display: inline-block;
         padding: 6px 14px;
@@ -25,7 +24,6 @@ st.markdown("""
         font-weight: 600;
         font-size: 13px;
         border: 1px solid #e9ecef;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
     }
     
     .success-text { 
@@ -69,17 +67,22 @@ def normalizar_edificio(nombre):
     return nombre.lower().replace(" ", "")
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR (NAVEGACIÓN Y BOTONES)
+# 3. INTERFAZ SUPERIOR
 # ==========================================
 col_nav, col_bus = st.columns([6, 4])
 
 with col_nav:
-    seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True, label_visibility="collapsed")
+    # Usamos un key para controlar el estado del widget
+    seleccion_mapa = st.radio(
+        "Navegación:", 
+        ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
+        horizontal=True, 
+        label_visibility="collapsed"
+    )
 
 with col_bus:
     query = st.text_input("Buscador:", placeholder="Busca tu sala (ej: LC3)...", label_visibility="collapsed")
 
-# --- CATEGORÍAS ACTUALIZADAS (CON ALIMENTACIÓN) ---
 st.markdown("""
     <div>
         <span class="categoria-tag">📖 Salas</span>
@@ -94,8 +97,13 @@ st.markdown("""
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN
+# 4. LÓGICA DE VISUALIZACIÓN CORREGIDA
 # ==========================================
+
+# CAMBIO CLAVE: Si se selecciona "Inicio", ignoramos cualquier búsqueda activa para volver al home
+if seleccion_mapa == "Inicio":
+    query = "" 
+
 if query and not df.empty:
     q = query.strip().lower()
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
@@ -119,12 +127,12 @@ if query and not df.empty:
             if os.path.exists(ruta):
                 st.image(ruta, use_container_width=True)
             else:
-                st.info(f"Cargando mapa... ({archivo}.jpg)")
+                st.info(f"Mostrando mapa... ({archivo}.jpg)")
     else:
         st.warning(f"No se encontró información para '{query}'")
 
 else:
-    # Vista por defecto según navegación
+    # Esta sección se ejecuta si la query está vacía o se seleccionó "Inicio"
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
