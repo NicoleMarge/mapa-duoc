@@ -21,65 +21,64 @@ bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if im
 
 st.markdown(f"""
     <style>
-    /* Contenedor principal */
+    /* 1. Reducir el espacio superior de la página */
     .block-container {{
-        padding-top: 1.5rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 0rem !important;
     }}
     
-    /* Espaciado entre bloques: SUAVIZADO para evitar solapamiento */
-    [data-testid="stVerticalBlock"] > div {{
-        margin-top: 5px !important; /* Espacio mínimo positivo */
-        margin-bottom: 5px !important;
+    /* 2. EL SECRETO: Reducir el espacio entre TODOS los elementos verticalmente */
+    [data-testid="stVerticalBlock"] {{
+        gap: 0.5rem !important; /* Espacio pequeño pero controlado entre filas */
     }}
 
     .main {{ background-color: #ffffff; }}
     
+    /* Banner un poco más delgado para ahorrar espacio */
     .header-container {{
         {bg_style}
         background-size: cover;
         background-position: center;
-        padding: 45px 25px;
+        padding: 40px 25px; 
         border-radius: 15px;
         color: white;
-        margin-bottom: 15px !important;
+        margin-bottom: 5px !important;
         box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.1);
     }}
     
     .header-container h1 {{
         color: white !important;
-        font-size: 45px !important;
-        font-weight: bold !important;
+        font-size: 42px !important;
         margin: 0;
         text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
     }}
 
-    /* Estilo de botones: compactos pero con aire */
+    /* Botones de categoría: compactos y sin márgenes estorbosos */
     div.stButton > button {{
         border-radius: 10px;
         background-color: white;
         color: #1a1a1a;
         font-weight: 700;
         border: 1px solid #e9ecef;
-        padding: 2px 10px;
-        box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
-        height: 35px;
+        padding: 2px 8px;
+        height: 32px;
         width: 100%;
+        margin: 0 !important;
     }}
     
-    /* Ajuste para que la fila de botones no choque con el radio */
-    [data-testid="stHorizontalBlock"] {{
-        margin-top: 10px !important;
-        gap: 5px !important;
+    /* Ajuste para las columnas de los botones */
+    [data-testid="column"] {{
+        padding: 0 5px !important;
     }}
 
+    /* Mensaje de éxito compacto */
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
-        padding: 10px; 
+        padding: 6px 12px; 
         border-radius: 8px; 
         font-weight: bold;
-        margin-top: 15px !important;
+        margin: 0 !important;
     }}
     </style>
     
@@ -101,8 +100,7 @@ def cargar_datos_seguros():
         df = pd.DataFrame(sheet.get_all_records())
         df.columns = df.columns.str.strip().str.lower()
         return df
-    except Exception as e:
-        return pd.DataFrame()
+    except Exception: return pd.DataFrame()
 
 df = cargar_datos_seguros()
 
@@ -122,7 +120,7 @@ if "busqueda_sala" not in st.session_state:
 def cambiar_busqueda(texto):
     st.session_state["busqueda_sala"] = texto
 
-# Fila 1: Radio y Buscador
+# Fila 1: Selectores y Buscador (Muy pegados al banner)
 col_nav, col_bus = st.columns([6, 4])
 with col_nav:
     seleccion_mapa = st.radio("Navegación", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
@@ -130,7 +128,7 @@ with col_nav:
 with col_bus:
     st.text_input("Buscador", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# Fila 2: Botones de Categoría (con nombres cortos para que quepan bien)
+# Fila 2: Botones de Categoría (Ubicados justo debajo de la fila 1)
 cat_cols = st.columns([1, 1, 1, 1, 1, 3])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
@@ -138,7 +136,7 @@ with cat_cols[2]: st.button("💡 Punto", on_click=cambiar_busqueda, args=("PUNT
 with cat_cols[3]: st.button("📚 Biblio", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
 with cat_cols[4]: st.button("☕ Comida", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
-st.markdown('<div style="margin-top: 10px;"></div>', unsafe_allow_html=True)
+st.markdown('<hr style="margin: 5px 0;">', unsafe_allow_html=True)
 
 # ==========================================
 # 4. LÓGICA DE VISUALIZACIÓN
@@ -151,7 +149,7 @@ if query_actual and not df.empty:
     
     if not resultados.empty:
         if len(resultados) > 1:
-            st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: {query_actual.upper()}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="success-text">✅ Encontradas {len(resultados)} opciones para: {query_actual.upper()}</div>', unsafe_allow_html=True)
             col_tabla, col_mapa = st.columns([5, 5])
             with col_tabla:
                 tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
