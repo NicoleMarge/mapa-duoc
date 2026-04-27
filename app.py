@@ -18,89 +18,92 @@ def get_base64_image(image_path):
     except Exception:
         return None
 
-# Intentamos cargar la imagen de la sede para el banner
+# Intentamos cargar la imagen de la sede
 img_base64 = get_base64_image("imagenes/sede.jpg")
 bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
 
 st.markdown(f"""
     <style>
-    /* --- ELIMINACIÓN TOTAL DE ELEMENTOS DE STREAMLIT (GITHUB, MANAGE APP, CORONA) --- */
-    
-    /* Oculta el header superior completo (GitHub, Share, Menú) */
+    /* 1. OCULTAR MENÚ SUPERIOR Y "MANAGE APP" */
     header[data-testid="stHeader"] {{
         visibility: hidden;
+        height: 0%;
+    }}
+    
+    /* Selector para el botón de Manage App y la barra flotante inferior */
+    [data-testid="stStatusWidget"], .stAppDeployButton, [data-testid="stAppDeployButton"] {{
         display: none !important;
     }}
-
-    /* Oculta el botón Manage App, la corona de marca de agua y el footer */
-    [data-testid="stAppDeployButton"], 
-    .stAppDeployButton, 
-    footer, 
-    #MainMenu, 
-    .viewerBadge_container__1QSob, 
-    .viewerBadge_link__1S137,
-    div[data-testid="stStatusWidget"] {{
+    
+    /* Forzar ocultamiento de cualquier barra de herramientas inferior */
+    footer {{
         display: none !important;
-        visibility: hidden !important;
     }}
+    
+    #MainMenu {{visibility: hidden;}}
 
-    /* Ajuste de márgenes para que la app aproveche todo el espacio superior */
+    /* 2. AJUSTE DE MÁRGENES GENERALES */
     .block-container {{
-        padding-top: 0rem !important;
-        padding-bottom: 0rem !important;
-        max-width: 95%;
+        padding-top: 2rem !important;
+        padding-bottom: 1rem !important;
     }}
 
     .main {{ background-color: #ffffff; }}
     
-    /* --- DISEÑO DEL BANNER PERSONALIZADO --- */
+    /* 3. ENCABEZADO (BANNER) */
     .header-container {{
         {bg_style}
         background-size: cover;
         background-position: center;
-        padding: 50px 20px;
+        padding: 60px 20px;
         border-radius: 15px;
         color: white;
-        margin-top: 1rem;
         margin-bottom: 25px;
         text-align: left;
-        box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.2);
+        box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.1);
     }}
     
     .header-container h1 {{
         color: white !important;
-        font-size: 45px !important;
+        font-size: 50px !important;
         font-weight: bold !important;
         margin: 0;
-        text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
+        text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
     }}
 
-    /* Botones de categorías */
+    /* 4. BOTONES DE CATEGORÍAS */
     div.stButton > button {{
-        border-radius: 10px;
-        background-color: #f8f9fa;
-        color: #333;
-        font-weight: 600;
-        border: 1px solid #ddd;
-        box-shadow: 0px 4px 6px rgba(0,0,0,0.05);
-        transition: 0.3s;
+        border-radius: 12px;
+        background-color: rgba(255, 255, 255, 0.95);
+        color: #1a1a1a;
+        font-weight: 700;
+        border: 1px solid #e9ecef;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        transition: all 0.3s;
+        margin-bottom: 5px;
     }}
     
     div.stButton > button:hover {{
         border-color: #004680;
         color: #004680;
-        transform: translateY(-1px);
+        transform: translateY(-2px);
     }}
 
-    /* Cuadros de aviso de éxito */
+    /* 5. CUADROS DE RESULTADOS */
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
         border: 1px solid #c3e6cb; 
-        padding: 12px; 
-        border-radius: 10px; 
+        padding: 10px; 
+        border-radius: 8px; 
         font-weight: bold; 
+        margin-top: 10px;
         margin-bottom: 15px;
+    }}
+    
+    .stRadio > label {{ 
+        color: #444 !important; 
+        font-weight: bold !important;
     }}
     </style>
     
@@ -110,7 +113,7 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CONEXIÓN A DATOS (GOOGLE SHEETS)
+# 2. CONEXIÓN A DATOS
 # ==========================================
 @st.cache_data(ttl=86400)
 def cargar_datos_seguros():
@@ -122,7 +125,7 @@ def cargar_datos_seguros():
         df = pd.DataFrame(sheet.get_all_records())
         df.columns = df.columns.str.strip().str.lower()
         return df
-    except Exception:
+    except Exception as e:
         return pd.DataFrame()
 
 df = cargar_datos_seguros()
@@ -135,7 +138,7 @@ def normalizar_edificio(nombre):
     return "general"
 
 # ==========================================
-# 3. INTERFAZ Y ESTADO DE SESIÓN
+# 3. INTERFAZ SUPERIOR Y ESTADO
 # ==========================================
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
@@ -152,33 +155,33 @@ with col_nav:
                               horizontal=True, label_visibility="collapsed", on_change=limpiar_todo)
 
 with col_bus:
-    st.text_input("Buscador:", placeholder="Busca tu sala o lugar...", label_visibility="collapsed", key="busqueda_sala")
+    st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# Botones Rápidos (Categorías)
-cat_cols = st.columns([1, 1, 1, 1, 1, 4])
+# --- CATEGORÍAS ---
+cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[2]: st.button("💡 Punto", on_click=cambiar_busqueda, args=("Punto",))
-with cat_cols[3]: st.button("📚 Biblio", on_click=cambiar_busqueda, args=("Biblioteca",))
-with cat_cols[4]: st.button("☕ Comida", on_click=cambiar_busqueda, args=("Alimentación",))
+with cat_cols[2]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
+with cat_cols[4]: st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE BÚSQUEDA Y MAPAS
+# 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 query_actual = st.session_state["busqueda_sala"]
 
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
-    # Buscamos en todas las columnas
     resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultados.empty:
         if len(resultados) > 1:
-            st.markdown(f'<div class="success-text">🔍 Se encontraron {len(resultados)} coincidencias para: {query_actual.upper()}</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
             col_tabla, col_mapa = st.columns([5, 5])
             with col_tabla:
+                st.markdown("### Opciones Disponibles")
                 tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
                 tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
                 st.table(tabla_vista)
@@ -186,20 +189,19 @@ if query_actual and not df.empty:
                 st.image("imagenes/general.jpg", use_container_width=True)
         else:
             res = resultados.iloc[0]
-            edificio_val = str(res.get('edificio', ''))
-            st.markdown(f'<div class="success-text">✅ Encontrado: {res.get("nombre", "").upper()}</div>', unsafe_allow_html=True)
+            edificio_valor = str(res.get('edificio', ''))
+            st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", "").upper()}**</div>', unsafe_allow_html=True)
             col_info, col_mapa = st.columns([4, 6])
             with col_info:
-                st.write(f"### Detalle")
-                st.write(f"**Lugar:** {res.get('nombre', 'N/A')}")
-                st.write(f"**Edificio:** {edificio_val}")
+                st.markdown("### Detalles de Ubicación")
+                st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
+                st.write(f"**Edificio:** {edificio_valor}")
                 st.write(f"**Piso:** {res.get('piso', 'N/A')}")
             with col_mapa:
-                nombre_archivo = normalizar_edificio(edificio_val)
+                nombre_archivo = normalizar_edificio(edificio_valor)
                 st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
     else:
-        st.warning(f"No hay resultados para '{query_actual}'")
+        st.warning(f"No se encontró información para '{query_actual}'")
 else:
-    # Si no hay búsqueda, mostramos el mapa según la navegación radial
     archivo_sel = "general" if seleccion_mapa == "Inicio" else normalizar_edificio(seleccion_mapa)
     st.image(f"imagenes/{archivo_sel}.jpg", use_container_width=True)
