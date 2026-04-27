@@ -24,15 +24,23 @@ bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if im
 
 st.markdown(f"""
     <style>
-    /* 1. OCULTAR ELEMENTOS DE INTERFAZ DE STREAMLIT */
+    /* 1. OCULTAR MENÚ SUPERIOR Y "MANAGE APP" */
     header[data-testid="stHeader"] {{
         visibility: hidden;
         height: 0%;
     }}
     
-    .stAppDeployButton {{
+    /* Selector para el botón de Manage App y la barra flotante inferior */
+    [data-testid="stStatusWidget"], .stAppDeployButton, [data-testid="stAppDeployButton"] {{
         display: none !important;
     }}
+    
+    /* Forzar ocultamiento de cualquier barra de herramientas inferior */
+    footer {{
+        display: none !important;
+    }}
+    
+    #MainMenu {{visibility: hidden;}}
 
     /* 2. AJUSTE DE MÁRGENES GENERALES */
     .block-container {{
@@ -81,7 +89,7 @@ st.markdown(f"""
         transform: translateY(-2px);
     }}
 
-    /* 5. CUADROS DE MENSAJES Y RESULTADOS */
+    /* 5. CUADROS DE RESULTADOS */
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
