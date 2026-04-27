@@ -63,12 +63,16 @@ def cargar_datos_seguros():
 
 df = cargar_datos_seguros()
 
+# FUNCIÓN CRÍTICA: Detecta el edificio correcto evitando confusiones entre I, II y III
 def normalizar_edificio(nombre):
-    nombre = str(nombre).upper()
-    if 'EDIFICIO I' in nombre and 'II' not in nombre: return "edificio1"
-    if 'EDIFICIO II' in nombre: return "edificio2"
-    if 'EDIFICIO III' in nombre: return "edificio3"
-    return nombre.lower().replace(" ", "")
+    n = str(nombre).upper().strip()
+    if 'III' in n or '3' in n:
+        return "edificio3"
+    elif 'II' in n or '2' in n:
+        return "edificio2"
+    elif 'I' in n or '1' in n:
+        return "edificio1"
+    return "general"
 
 # ==========================================
 # 3. INTERFAZ SUPERIOR Y MANEJO DE ESTADO
@@ -110,7 +114,6 @@ with cat_cols[0]:
 with cat_cols[1]:
     st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baños",))
 with cat_cols[2]:
-    # AHORA BUSCA SOLO "CASE" PARA QUE COINCIDA CON LA BASE DE DATOS
     st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
 with cat_cols[3]:
     st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
@@ -127,27 +130,16 @@ st.markdown("---")
 
 query_actual = st.session_state["busqueda_sala"]
 
+# Si hay algo escrito en el buscador, le damos prioridad sobre la navegación por pestañas
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
-    
-    # Buscamos coincidencias en el DataFrame
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
-        # LÓGICA DE PRIORIDAD PARA EL BOTÓN CASE
-        if q == "case":
-            # Si hay varios "CASE", buscamos específicamente el del Edificio III
-            filtro_prioridad = resultado[resultado.apply(lambda row: 'edificio iii' in str(row.values).lower(), axis=1)]
-            if not filtro_prioridad.empty:
-                res = filtro_prioridad.iloc[0]
-            else:
-                res = resultado.iloc[0]
-        else:
-            res = resultado.iloc[0]
-
-        edificio_nom = str(res.get('edificio', 'Edificio 1'))
+        # Si la base de datos tiene un solo CASE, esto lo traerá sin problemas
+        res = resultado.iloc[0]
+        edificio_valor = str(res.get('edificio', ''))
         
-        # Mostrar el banner verde de éxito
         st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
 
         col_info, col_mapa = st.columns([4, 6])
@@ -155,21 +147,23 @@ if query_actual and not df.empty:
             st.markdown("### Detalles de Ubicación")
             st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
             st.write(f"**Referencia:** {str(res.get('sala', 'N/A')).upper()}")
-            st.write(f"**Edificio:** {edificio_nom}")
+            st.write(f"**Edificio:** {edificio_valor}")
             st.write(f"**Piso:** {res.get('piso', 'N/A')}")
         
         with col_mapa:
-            archivo = normalizar_edificio(edificio_nom)
-            ruta = f"imagenes/{archivo}.jpg"
+            # Seleccionamos la imagen correcta basándonos en la columna 'edificio'
+            nombre_archivo = normalizar_edificio(edificio_valor)
+            ruta = f"imagenes/{nombre_archivo}.jpg"
+            
             if os.path.exists(ruta):
                 st.image(ruta, use_container_width=True)
             else:
-                st.info(f"Mostrando ubicación en {edificio_nom}")
+                st.warning(f"Imagen no encontrada: {ruta}")
     else:
         st.warning(f"No se encontró información para '{query_actual}'")
 
 else:
-    # Si no hay búsqueda, mostramos el mapa según el selector de radio
+    # Si el buscador está vacío, mostramos el plano según la pestaña de navegación
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
@@ -180,3 +174,5 @@ else:
     
     if os.path.exists(img):
         st.image(img, use_container_width=True)
+    else:
+        st.error(f"No se pudo cargar la imagen: {img}")
