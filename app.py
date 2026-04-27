@@ -24,39 +24,33 @@ bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if im
 
 st.markdown(f"""
     <style>
-    /* --- BLOQUE PARA OCULTAR TODO LO RELACIONADO A MANAGE APP --- */
-    /* Oculta el botón por ID de test y clase */
-    [data-testid="stAppDeployButton"], 
-    .stAppDeployButton, 
-    [data-testid="stStatusWidget"] {{
-        display: none !important;
-        visibility: hidden !important;
+    /* 1. OCULTAR MENÚ SUPERIOR Y "MANAGE APP" */
+    header[data-testid="stHeader"] {{
+        visibility: hidden;
+        height: 0%;
     }}
     
-    /* Elimina el footer y cualquier barra de herramientas inferior */
+    /* Selector para el botón de Manage App y la barra flotante inferior */
+    [data-testid="stStatusWidget"], .stAppDeployButton, [data-testid="stAppDeployButton"] {{
+        display: none !important;
+    }}
+    
+    /* Forzar ocultamiento de cualquier barra de herramientas inferior */
     footer {{
         display: none !important;
-        visibility: hidden !important;
     }}
     
-    /* Elimina el menú superior de Streamlit (GitHub, Share, etc.) */
-    header[data-testid="stHeader"] {{
-        display: none !important;
-    }}
+    #MainMenu {{visibility: hidden;}}
 
-    /* Estilo para asegurar que el contenido ocupe el espacio liberado */
-    #root > div:nth-child(1) > div > div > div > div > section > div {{
-        padding-bottom: 0px !important;
-    }}
-    
-    /* --- DISEÑO DE LA INTERFAZ --- */
+    /* 2. AJUSTE DE MÁRGENES GENERALES */
     .block-container {{
-        padding-top: 1.5rem !important;
-        padding-bottom: 0rem !important;
+        padding-top: 2rem !important;
+        padding-bottom: 1rem !important;
     }}
 
     .main {{ background-color: #ffffff; }}
     
+    /* 3. ENCABEZADO (BANNER) */
     .header-container {{
         {bg_style}
         background-size: cover;
@@ -66,7 +60,7 @@ st.markdown(f"""
         color: white;
         margin-bottom: 25px;
         text-align: left;
-        box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.2);
+        box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.1);
     }}
     
     .header-container h1 {{
@@ -77,6 +71,7 @@ st.markdown(f"""
         text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
     }}
 
+    /* 4. BOTONES DE CATEGORÍAS */
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
@@ -85,6 +80,7 @@ st.markdown(f"""
         border: 1px solid #e9ecef;
         box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
         transition: all 0.3s;
+        margin-bottom: 5px;
     }}
     
     div.stButton > button:hover {{
@@ -93,6 +89,7 @@ st.markdown(f"""
         transform: translateY(-2px);
     }}
 
+    /* 5. CUADROS DE RESULTADOS */
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
@@ -100,7 +97,13 @@ st.markdown(f"""
         padding: 10px; 
         border-radius: 8px; 
         font-weight: bold; 
+        margin-top: 10px;
         margin-bottom: 15px;
+    }}
+    
+    .stRadio > label {{ 
+        color: #444 !important; 
+        font-weight: bold !important;
     }}
     </style>
     
@@ -135,7 +138,7 @@ def normalizar_edificio(nombre):
     return "general"
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR
+# 3. INTERFAZ SUPERIOR Y ESTADO
 # ==========================================
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
@@ -143,20 +146,24 @@ if "busqueda_sala" not in st.session_state:
 def cambiar_busqueda(texto):
     st.session_state["busqueda_sala"] = texto
 
+def limpiar_todo():
+    st.session_state["busqueda_sala"] = ""
+
 col_nav, col_bus = st.columns([6, 4])
 with col_nav:
     seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
-                              horizontal=True, label_visibility="collapsed")
+                              horizontal=True, label_visibility="collapsed", on_change=limpiar_todo)
 
 with col_bus:
     st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
+# --- CATEGORÍAS ---
 cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[2]: st.button("💡 Punto", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
-with cat_cols[3]: st.button("📚 Biblio", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[4]: st.button("☕ Comida", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
+with cat_cols[2]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
+with cat_cols[4]: st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
 
@@ -174,6 +181,7 @@ if query_actual and not df.empty:
             st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
             col_tabla, col_mapa = st.columns([5, 5])
             with col_tabla:
+                st.markdown("### Opciones Disponibles")
                 tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
                 tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
                 st.table(tabla_vista)
@@ -185,7 +193,8 @@ if query_actual and not df.empty:
             st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", "").upper()}**</div>', unsafe_allow_html=True)
             col_info, col_mapa = st.columns([4, 6])
             with col_info:
-                st.write(f"**Lugar:** {res.get('nombre', 'N/A')}")
+                st.markdown("### Detalles de Ubicación")
+                st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
                 st.write(f"**Edificio:** {edificio_valor}")
                 st.write(f"**Piso:** {res.get('piso', 'N/A')}")
             with col_mapa:
