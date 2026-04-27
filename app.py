@@ -96,9 +96,10 @@ with cat_cols[0]: st.button("📖 Salas", on_click=cambiar_busqueda, args=("Sala
 with cat_cols[1]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[2]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
 with cat_cols[3]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
-with cat_cols[4]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("Biblioteca",))
+with cat_cols[4]: 
+    # UNICO CAMBIO: Se actualizó el argumento a "BIBLIOTECA"
+    st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
 with cat_cols[5]: 
-    # BOTÓN ACTUALIZADO PARA ALIMENTACIÓN
     st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
@@ -113,14 +114,12 @@ if query_actual and not df.empty:
     resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultados.empty:
-        # Si hay varios lugares (Baños o Alimentación)
         if len(resultados) > 1:
             st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
             
             col_tabla, col_mapa = st.columns([5, 5])
             with col_tabla:
                 st.markdown("### Opciones Disponibles")
-                # Preparamos la tabla según tus imágenes del Excel
                 tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
                 tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
                 st.table(tabla_vista)
@@ -128,7 +127,6 @@ if query_actual and not df.empty:
             with col_mapa:
                 st.image("imagenes/general.jpg", use_container_width=True, caption="Ubicación General")
         
-        # Si es un lugar único (CASE o sala específica)
         else:
             res = resultados.iloc[0]
             edificio_valor = str(res.get('edificio', ''))
@@ -146,6 +144,5 @@ if query_actual and not df.empty:
     else:
         st.warning(f"No se encontró información para '{query_actual}'")
 else:
-    # Vista de navegación por defecto
     archivo_sel = "general" if seleccion_mapa == "Inicio" else normalizar_edificio(seleccion_mapa)
     st.image(f"imagenes/{archivo_sel}.jpg", use_container_width=True)
