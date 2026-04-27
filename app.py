@@ -63,7 +63,6 @@ def cargar_datos_seguros():
 
 df = cargar_datos_seguros()
 
-# FUNCIÓN CRÍTICA: Detecta el edificio correcto evitando confusiones entre I, II y III
 def normalizar_edificio(nombre):
     n = str(nombre).upper().strip()
     if 'III' in n or '3' in n:
@@ -112,7 +111,8 @@ cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3])
 with cat_cols[0]:
     st.button("📖 Salas", on_click=cambiar_busqueda, args=("Salas",))
 with cat_cols[1]:
-    st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baños",))
+    # Se recomienda usar "Baño" en singular para captar tanto "Baño Mujeres" como "Baños"
+    st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[2]:
     st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
 with cat_cols[3]:
@@ -125,45 +125,61 @@ with cat_cols[5]:
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN
+# 4. LÓGICA DE VISUALIZACIÓN (ACTUALIZADA)
 # ==========================================
 
 query_actual = st.session_state["busqueda_sala"]
 
-# Si hay algo escrito en el buscador, le damos prioridad sobre la navegación por pestañas
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
-    resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
-    if not resultado.empty:
-        # Si la base de datos tiene un solo CASE, esto lo traerá sin problemas
-        res = resultado.iloc[0]
-        edificio_valor = str(res.get('edificio', ''))
-        
-        st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
-
-        col_info, col_mapa = st.columns([4, 6])
-        with col_info:
-            st.markdown("### Detalles de Ubicación")
-            st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
-            st.write(f"**Referencia:** {str(res.get('sala', 'N/A')).upper()}")
-            st.write(f"**Edificio:** {edificio_valor}")
-            st.write(f"**Piso:** {res.get('piso', 'N/A')}")
-        
-        with col_mapa:
-            # Seleccionamos la imagen correcta basándonos en la columna 'edificio'
-            nombre_archivo = normalizar_edificio(edificio_valor)
-            ruta = f"imagenes/{nombre_archivo}.jpg"
+    # Buscamos todas las filas que contengan el texto
+    resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
+    
+    if not resultados.empty:
+        # CASO A: Múltiples resultados (Ej: Baños, Salas de clases)
+        if len(resultados) > 1:
+            st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} ubicaciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
             
-            if os.path.exists(ruta):
-                st.image(ruta, use_container_width=True)
-            else:
-                st.warning(f"Imagen no encontrada: {ruta}")
+            col_tabla, col_mapa = st.columns([5, 5])
+            
+            with col_tabla:
+                st.markdown("### Lista de Ubicaciones")
+                # Preparamos la tabla para mostrar
+                tabla_mostrar = resultados[['nombre', 'edificio', 'piso']].copy()
+                tabla_mostrar.columns = ['Nombre/Sala', 'Edificio', 'Piso']
+                st.table(tabla_mostrar) # Esto genera la tabla que viste en tus imágenes
+            
+            with col_mapa:
+                st.image("imagenes/general.jpg", use_container_width=True, caption="Plano General de Sedes")
+        
+        # CASO B: Resultado único (Ej: CASE, LC3)
+        else:
+            res = resultados.iloc[0]
+            edificio_valor = str(res.get('edificio', ''))
+            
+            st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
+
+            col_info, col_mapa = st.columns([4, 6])
+            with col_info:
+                st.markdown("### Detalles de Ubicación")
+                st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
+                st.write(f"**Referencia:** {str(res.get('sala', 'N/A')).upper()}")
+                st.write(f"**Edificio:** {edificio_valor}")
+                st.write(f"**Piso:** {res.get('piso', 'N/A')}")
+            
+            with col_mapa:
+                nombre_archivo = normalizar_edificio(edificio_valor)
+                ruta = f"imagenes/{nombre_archivo}.jpg"
+                if os.path.exists(ruta):
+                    st.image(ruta, use_container_width=True)
+                else:
+                    st.warning(f"Imagen no encontrada: {ruta}")
     else:
         st.warning(f"No se encontró información para '{query_actual}'")
 
 else:
-    # Si el buscador está vacío, mostramos el plano según la pestaña de navegación
+    # Lógica de navegación normal
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
@@ -174,5 +190,3 @@ else:
     
     if os.path.exists(img):
         st.image(img, use_container_width=True)
-    else:
-        st.error(f"No se pudo cargar la imagen: {img}")
