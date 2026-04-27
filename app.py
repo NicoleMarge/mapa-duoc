@@ -74,11 +74,11 @@ def normalizar_edificio(nombre):
 # 3. INTERFAZ SUPERIOR Y MANEJO DE ESTADO
 # ==========================================
 
-# 1. Inicializamos el estado si no existe
+# Inicializar el estado
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
 
-# 2. Funciones de Callback (La forma correcta de actualizar widgets con keys)
+# Funciones de cambio
 def cambiar_busqueda(texto):
     st.session_state["busqueda_sala"] = texto
 
@@ -93,19 +93,19 @@ with col_nav:
         ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
         horizontal=True, 
         label_visibility="collapsed",
-        on_change=limpiar_todo # Limpia al cambiar de edificio
+        on_change=limpiar_todo
     )
 
 with col_bus:
-    # El widget "es dueño" de la clave busqueda_sala
-    query = st.text_input(
+    # Vinculamos directamente al session_state
+    st.text_input(
         "Buscador:", 
         placeholder="Busca tu sala (ej: LC3)...", 
         label_visibility="collapsed",
         key="busqueda_sala"
     )
 
-# --- CATEGORÍAS (Usando args en el botón para evitar el error de API) ---
+# --- CATEGORÍAS (BOTONES) ---
 cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3])
 
 with cat_cols[0]:
@@ -113,7 +113,6 @@ with cat_cols[0]:
 with cat_cols[1]:
     st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baños",))
 with cat_cols[2]:
-    # BOTÓN CASE: Llama a la función antes de renderizar el buscador
     st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
 with cat_cols[3]:
     st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
@@ -128,11 +127,16 @@ st.markdown("---")
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 
-# Si el usuario selecciona Inicio, nos aseguramos de que la query esté vacía
-final_query = query if seleccion_mapa != "Inicio" else ""
+# IMPORTANTE: Leemos de session_state para que los botones funcionen
+query_actual = st.session_state["busqueda_sala"]
 
-if final_query and not df.empty:
-    q = final_query.strip().lower()
+# Si se marca Inicio, ignoramos la búsqueda
+if seleccion_mapa == "Inicio":
+    query_actual = ""
+
+if query_actual and not df.empty:
+    q = query_actual.strip().lower()
+    # Buscamos en todas las columnas
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
@@ -157,10 +161,10 @@ if final_query and not df.empty:
             else:
                 st.info(f"Mostrando mapa de {edificio_nom}")
     else:
-        st.warning(f"No se encontró información para '{final_query}'")
+        st.warning(f"No se encontró información para '{query_actual}'")
 
 else:
-    # Vista general de edificios
+    # Vista por navegación de radio
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
