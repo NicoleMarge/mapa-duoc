@@ -74,11 +74,9 @@ def normalizar_edificio(nombre):
 # 3. INTERFAZ SUPERIOR Y MANEJO DE ESTADO
 # ==========================================
 
-# Inicializar el estado
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
 
-# Funciones de cambio
 def cambiar_busqueda(texto):
     st.session_state["busqueda_sala"] = texto
 
@@ -97,7 +95,6 @@ with col_nav:
     )
 
 with col_bus:
-    # Vinculamos directamente al session_state
     st.text_input(
         "Buscador:", 
         placeholder="Busca tu sala (ej: LC3)...", 
@@ -113,7 +110,8 @@ with cat_cols[0]:
 with cat_cols[1]:
     st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baños",))
 with cat_cols[2]:
-    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
+    # CAMBIO AQUÍ: Somos más específicos para que encuentre el CASE del Edificio III
+    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE EDIFICIO III",))
 with cat_cols[3]:
     st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
 with cat_cols[4]:
@@ -127,29 +125,36 @@ st.markdown("---")
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 
-# IMPORTANTE: Leemos de session_state para que los botones funcionen
 query_actual = st.session_state["busqueda_sala"]
 
-# Si se marca Inicio, ignoramos la búsqueda
 if seleccion_mapa == "Inicio":
     query_actual = ""
 
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
-    # Buscamos en todas las columnas
+    
+    # Buscamos en el DataFrame
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
+        # Si hay varios resultados (como varios CASE), intentamos priorizar el que coincida mejor
         res = resultado.iloc[0]
+        
+        # Opcional: Si buscamos "CASE", intentamos filtrar por edificio 3 específicamente si existe en los resultados
+        if "case" in q:
+            match_especifico = resultado[resultado.apply(lambda row: 'edificio iii' in str(row.values).lower(), axis=1)]
+            if not match_especifico.empty:
+                res = match_especifico.iloc[0]
+
         edificio_nom = str(res.get('edificio', 'Edificio 1'))
         
         st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
 
         col_info, col_mapa = st.columns([4, 6])
         with col_info:
-            st.markdown("### Detalles")
+            st.markdown("### Detalles de Ubicación")
             st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
-            st.write(f"**Sala/Ref:** {str(res.get('sala', 'N/A')).upper()}")
+            st.write(f"**Referencia:** {str(res.get('sala', 'N/A')).upper()}")
             st.write(f"**Edificio:** {edificio_nom}")
             st.write(f"**Piso:** {res.get('piso', 'N/A')}")
         
@@ -164,7 +169,6 @@ if query_actual and not df.empty:
         st.warning(f"No se encontró información para '{query_actual}'")
 
 else:
-    # Vista por navegación de radio
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
