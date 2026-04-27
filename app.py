@@ -12,85 +12,74 @@ st.set_page_config(page_title="Mapa Duoc UC", layout="wide", initial_sidebar_sta
 
 # Función para convertir la imagen local a Base64
 def get_base64_image(image_path):
-    try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
-    except:
-        return None
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
 
-# Carga de imagen de fondo
-img_base64 = get_base64_image("imagenes/sede.jpg")
-bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
+# Intentamos cargar la imagen de la sede
+try:
+    path_sede = "imagenes/sede.jpg"
+    img_base64 = get_base64_image(path_sede)
+    bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");'
+except Exception:
+    # Si falla, usamos un color azul institucional de respaldo
+    bg_style = 'background-color: #004680;'
 
-# --- CSS PARA COMPACTAR COMPONENTES ---
 st.markdown(f"""
     <style>
-    /* Eliminar el padding superior de la página */
-    .block-container {{
-        padding-top: 1rem !important;
-        padding-bottom: 0rem !important;
-    }}
-    
-    /* Reducir espacio entre bloques verticales de Streamlit */
-    [data-testid="stVerticalBlock"] > div {{
-        margin-top: -15px !important;
-    }}
-
     .main {{ background-color: #ffffff; }}
     
-    /* Contenedor del encabezado compacto */
+    /* Contenedor del encabezado usando Base64 para máxima compatibilidad */
     .header-container {{
         {bg_style}
         background-size: cover;
         background-position: center;
-        padding: 50px 20px; /* Reducido para que sea más delgado */
+        padding: 80px 20px;
         border-radius: 15px;
         color: white;
-        margin-bottom: 10px !important;
+        margin-bottom: 30px;
         text-align: left;
         box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.1);
     }}
     
     .header-container h1 {{
         color: white !important;
-        font-size: 48px !important;
+        font-size: 55px !important;
         font-weight: bold !important;
         margin: 0;
         text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
     }}
 
-    /* Botones de categorías más juntos */
+    /* Botones de categorías */
     div.stButton > button {{
-        border-radius: 10px;
+        border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
         color: #1a1a1a;
         font-weight: 700;
         border: 1px solid #e9ecef;
-        padding: 4px 12px;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
-        transition: all 0.2s;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        transition: all 0.3s;
     }}
     
     div.stButton > button:hover {{
         border-color: #004680;
         color: #004680;
-        transform: translateY(-1px);
+        background-color: #ffffff;
+        transform: translateY(-2px);
     }}
 
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
         border: 1px solid #c3e6cb; 
-        padding: 8px; 
+        padding: 10px; 
         border-radius: 5px; 
         font-weight: bold; 
-        margin-top: 5px !important;
+        margin-top: 15px;
     }}
     
-    /* Ajuste para los Radio buttons horizontales */
-    .stRadio > label {{ display: none; }} /* Oculta etiqueta innecesaria */
-    div[data-testid="stHorizontalBlock"] {{
-        align-items: center;
+    .stRadio > label {{ 
+        color: #444 !important; 
+        font-weight: bold !important;
     }}
     </style>
     
@@ -145,15 +134,15 @@ with col_nav:
 with col_bus:
     st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# --- CATEGORÍAS (JUNTAS) ---
+# --- CATEGORÍAS ---
 cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[2]: st.button("💡 Punto", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
-with cat_cols[3]: st.button("📚 Biblio", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[4]: st.button("☕ Comida", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
+with cat_cols[2]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
+with cat_cols[4]: st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
-st.markdown('<hr style="margin: 10px 0;">', unsafe_allow_html=True)
+st.markdown("---")
 
 # ==========================================
 # 4. LÓGICA DE VISUALIZACIÓN
@@ -169,6 +158,7 @@ if query_actual and not df.empty:
             st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
             col_tabla, col_mapa = st.columns([5, 5])
             with col_tabla:
+                st.markdown("### Opciones Disponibles")
                 tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
                 tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
                 st.table(tabla_vista)
@@ -180,6 +170,8 @@ if query_actual and not df.empty:
             st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", "").upper()}**</div>', unsafe_allow_html=True)
             col_info, col_mapa = st.columns([4, 6])
             with col_info:
+                st.markdown("### Detalles de Ubicación")
+                st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
                 st.write(f"**Edificio:** {edificio_valor}")
                 st.write(f"**Piso:** {res.get('piso', 'N/A')}")
             with col_mapa:
