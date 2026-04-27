@@ -21,39 +21,40 @@ bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if im
 
 st.markdown(f"""
     <style>
-    /* 1. Reducir el espacio superior de la página */
+    /* 1. Reducir el margen superior de la página */
     .block-container {{
-        padding-top: 1rem !important;
+        padding-top: 1.5rem !important;
         padding-bottom: 0rem !important;
     }}
     
-    /* 2. EL SECRETO: Reducir el espacio entre TODOS los elementos verticalmente */
-    [data-testid="stVerticalBlock"] {{
-        gap: 0.5rem !important; /* Espacio pequeño pero controlado entre filas */
+    /* 2. Ajuste de espacio entre bloques (Equilibrado) */
+    [data-testid="stVerticalBlock"] > div {{
+        margin-top: -8px !important; /* Margen negativo suave para acercar sin encimar */
+        margin-bottom: 0px !important;
     }}
 
     .main {{ background-color: #ffffff; }}
     
-    /* Banner un poco más delgado para ahorrar espacio */
+    /* Header compacto */
     .header-container {{
         {bg_style}
         background-size: cover;
         background-position: center;
-        padding: 40px 25px; 
+        padding: 45px 25px; 
         border-radius: 15px;
         color: white;
-        margin-bottom: 5px !important;
+        margin-bottom: 10px !important;
         box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.1);
     }}
     
     .header-container h1 {{
         color: white !important;
-        font-size: 42px !important;
+        font-size: 45px !important;
         margin: 0;
         text-shadow: 2px 2px 8px rgba(0,0,0,0.8);
     }}
 
-    /* Botones de categoría: compactos y sin márgenes estorbosos */
+    /* Botones: compactos y alineados */
     div.stButton > button {{
         border-radius: 10px;
         background-color: white;
@@ -61,24 +62,30 @@ st.markdown(f"""
         font-weight: 700;
         border: 1px solid #e9ecef;
         padding: 2px 8px;
-        height: 32px;
+        height: 34px;
         width: 100%;
-        margin: 0 !important;
+        margin-top: 5px !important; /* Espacio para que no toque lo de arriba */
     }}
     
-    /* Ajuste para las columnas de los botones */
+    /* Quitar espacios extra de las columnas */
     [data-testid="column"] {{
-        padding: 0 5px !important;
+        padding: 0 4px !important;
     }}
 
-    /* Mensaje de éxito compacto */
+    /* Estilo para los textos informativos */
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
-        padding: 6px 12px; 
+        padding: 8px 12px; 
         border-radius: 8px; 
         font-weight: bold;
-        margin: 0 !important;
+        margin-top: 10px !important;
+    }}
+    
+    /* Línea divisoria discreta */
+    hr {{
+        margin-top: 15px !important;
+        margin-bottom: 10px !important;
     }}
     </style>
     
@@ -120,7 +127,7 @@ if "busqueda_sala" not in st.session_state:
 def cambiar_busqueda(texto):
     st.session_state["busqueda_sala"] = texto
 
-# Fila 1: Selectores y Buscador (Muy pegados al banner)
+# Fila 1: Selectores y Buscador
 col_nav, col_bus = st.columns([6, 4])
 with col_nav:
     seleccion_mapa = st.radio("Navegación", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
@@ -128,7 +135,7 @@ with col_nav:
 with col_bus:
     st.text_input("Buscador", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# Fila 2: Botones de Categoría (Ubicados justo debajo de la fila 1)
+# Fila 2: Botones de Categoría
 cat_cols = st.columns([1, 1, 1, 1, 1, 3])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
@@ -136,7 +143,7 @@ with cat_cols[2]: st.button("💡 Punto", on_click=cambiar_busqueda, args=("PUNT
 with cat_cols[3]: st.button("📚 Biblio", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
 with cat_cols[4]: st.button("☕ Comida", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
-st.markdown('<hr style="margin: 5px 0;">', unsafe_allow_html=True)
+st.markdown("---")
 
 # ==========================================
 # 4. LÓGICA DE VISUALIZACIÓN
@@ -168,6 +175,8 @@ if query_actual and not df.empty:
             with col_mapa:
                 nombre_archivo = normalizar_edificio(edificio_valor)
                 st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
+    else:
+        st.warning(f"No se encontró información para '{query_actual}'")
 else:
     archivo_sel = "general" if seleccion_mapa == "Inicio" else normalizar_edificio(seleccion_mapa)
     st.image(f"imagenes/{archivo_sel}.jpg", use_container_width=True)
