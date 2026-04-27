@@ -9,7 +9,6 @@ import os
 # ==========================================
 st.set_page_config(page_title="Mapa Duoc UC", layout="wide", initial_sidebar_state="collapsed")
 
-# CSS personalizado para replicar la referencia limpia
 st.markdown("""
     <style>
     .main { background-color: #ffffff; }
@@ -56,6 +55,15 @@ def cargar_datos_seguros():
 
 df = cargar_datos_seguros()
 
+# Función para normalizar nombres de edificios (Convierte Romano a Número)
+def normalizar_nombre_edificio(nombre):
+    nombre = str(nombre).upper()
+    if 'EDIFICIO I' in nombre and 'II' not in nombre: return "edificio1"
+    if 'EDIFICIO II' in nombre: return "edificio2"
+    if 'EDIFICIO III' in nombre: return "edificio3"
+    # Si ya viene como número o texto simple:
+    return nombre.lower().replace(" ", "")
+
 # ==========================================
 # 3. INTERFAZ SUPERIOR: NAVEGACIÓN Y BÚSQUEDA
 # ==========================================
@@ -83,7 +91,6 @@ st.markdown("---")
 # ==========================================
 img_to_show = None
 
-# Prioridad 1: Búsqueda de sala
 if query and not df.empty:
     q = query.strip().lower()
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
@@ -112,19 +119,18 @@ if query and not df.empty:
             st.markdown(f'<span class="info-label">📝 Descripción:</span><br>{descripcion}', unsafe_allow_html=True)
 
         with col_mapa:
-            # Lógica para JPG: "EDIFICIO 1" -> "edificio1.jpg"
-            nombre_archivo = edificio_nom.lower().replace(" ", "")
+            # USAMOS LA FUNCIÓN DE NORMALIZACIÓN AQUÍ
+            nombre_archivo = normalizar_nombre_edificio(edificio_nom)
             img_to_show = f"imagenes/{nombre_archivo}.jpg"
             
             if os.path.exists(img_to_show):
                 st.image(img_to_show, use_container_width=True)
             else:
-                st.info(f"Cargando mapa de edificio... ({nombre_archivo}.jpg)")
+                st.error(f"Archivo no encontrado: {img_to_show}")
 
     else:
         st.warning(f"No se encontraron resultados para '{query}'")
 
-# Prioridad 2: Navegación por botones
 else:
     col_vacia_izq, col_mapa_gen, col_vacia_der = st.columns([1, 8, 1])
 
@@ -133,8 +139,7 @@ else:
             st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
             img_to_show = "imagenes/general.jpg"
         else:
-            # "Edificio 2" -> "edificio2.jpg"
-            nombre_archivo_sel = seleccion_mapa.lower().replace(" ", "")
+            nombre_archivo_sel = normalizar_nombre_edificio(seleccion_mapa)
             st.markdown(f"<h3 style='text-align: center;'>Plano {seleccion_mapa}</h3>", unsafe_allow_html=True)
             img_to_show = f"imagenes/{nombre_archivo_sel}.jpg"
         
