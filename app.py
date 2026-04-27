@@ -110,7 +110,7 @@ with cat_cols[0]:
 with cat_cols[1]:
     st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baños",))
 with cat_cols[2]:
-    # CAMBIO AQUÍ: Somos más específicos para que encuentre el CASE del Edificio III
+    # Modificado para forzar la búsqueda en el Edificio III
     st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE EDIFICIO III",))
 with cat_cols[3]:
     st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
@@ -125,26 +125,25 @@ st.markdown("---")
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 
+# Ahora leemos la query sin importar si estamos en Inicio
 query_actual = st.session_state["busqueda_sala"]
-
-if seleccion_mapa == "Inicio":
-    query_actual = ""
 
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
     
-    # Buscamos en el DataFrame
+    # Buscamos coincidencias generales
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
-        # Si hay varios resultados (como varios CASE), intentamos priorizar el que coincida mejor
-        res = resultado.iloc[0]
-        
-        # Opcional: Si buscamos "CASE", intentamos filtrar por edificio 3 específicamente si existe en los resultados
+        # Priorización específica para CASE
         if "case" in q:
-            match_especifico = resultado[resultado.apply(lambda row: 'edificio iii' in str(row.values).lower(), axis=1)]
-            if not match_especifico.empty:
-                res = match_especifico.iloc[0]
+            filtro_ed3 = resultado[resultado.apply(lambda row: 'edificio iii' in str(row.values).lower(), axis=1)]
+            if not filtro_ed3.empty:
+                res = filtro_ed3.iloc[0]
+            else:
+                res = resultado.iloc[0]
+        else:
+            res = resultado.iloc[0]
 
         edificio_nom = str(res.get('edificio', 'Edificio 1'))
         
@@ -164,11 +163,12 @@ if query_actual and not df.empty:
             if os.path.exists(ruta):
                 st.image(ruta, use_container_width=True)
             else:
-                st.info(f"Mostrando mapa de {edificio_nom}")
+                st.info(f"Mostrando ubicación en {edificio_nom}")
     else:
         st.warning(f"No se encontró información para '{query_actual}'")
 
 else:
+    # Vista de navegación (Solo si el buscador está vacío)
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
@@ -179,3 +179,5 @@ else:
     
     if os.path.exists(img):
         st.image(img, use_container_width=True)
+    else:
+        st.error(f"No se encontró la imagen: {img}")
