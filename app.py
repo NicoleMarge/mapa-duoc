@@ -65,18 +65,14 @@ df = cargar_datos_seguros()
 
 def normalizar_edificio(nombre):
     n = str(nombre).upper().strip()
-    if 'III' in n or '3' in n:
-        return "edificio3"
-    elif 'II' in n or '2' in n:
-        return "edificio2"
-    elif 'I' in n or '1' in n:
-        return "edificio1"
+    if 'III' in n or '3' in n: return "edificio3"
+    elif 'II' in n or '2' in n: return "edificio2"
+    elif 'I' in n or '1' in n: return "edificio1"
     return "general"
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR Y MANEJO DE ESTADO
+# 3. INTERFAZ SUPERIOR Y ESTADO
 # ==========================================
-
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
 
@@ -87,106 +83,69 @@ def limpiar_todo():
     st.session_state["busqueda_sala"] = ""
 
 col_nav, col_bus = st.columns([6, 4])
-
 with col_nav:
-    seleccion_mapa = st.radio(
-        "Navegación:", 
-        ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
-        horizontal=True, 
-        label_visibility="collapsed",
-        on_change=limpiar_todo
-    )
+    seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
+                              horizontal=True, label_visibility="collapsed", on_change=limpiar_todo)
 
 with col_bus:
-    st.text_input(
-        "Buscador:", 
-        placeholder="Busca tu sala (ej: LC3)...", 
-        label_visibility="collapsed",
-        key="busqueda_sala"
-    )
+    st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# --- CATEGORÍAS (BOTONES) ---
+# --- CATEGORÍAS ---
 cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3])
-
-with cat_cols[0]:
-    st.button("📖 Salas", on_click=cambiar_busqueda, args=("Salas",))
-with cat_cols[1]:
-    # Se recomienda usar "Baño" en singular para captar tanto "Baño Mujeres" como "Baños"
-    st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
-with cat_cols[2]:
-    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[3]:
-    st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
-with cat_cols[4]:
-    st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("Biblioteca",))
-with cat_cols[5]:
-    st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("Alimentación",))
+with cat_cols[0]: st.button("📖 Salas", on_click=cambiar_busqueda, args=("Salas",))
+with cat_cols[1]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
+with cat_cols[2]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
+with cat_cols[3]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
+with cat_cols[4]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("Biblioteca",))
+with cat_cols[5]: 
+    # BOTÓN ACTUALIZADO PARA ALIMENTACIÓN
+    st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN (ACTUALIZADA)
+# 4. LÓGICA DE VISUALIZACIÓN MULTI-RESULTADO
 # ==========================================
-
 query_actual = st.session_state["busqueda_sala"]
 
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
-    
-    # Buscamos todas las filas que contengan el texto
     resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultados.empty:
-        # CASO A: Múltiples resultados (Ej: Baños, Salas de clases)
+        # Si hay varios lugares (Baños o Alimentación)
         if len(resultados) > 1:
-            st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} ubicaciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
             
             col_tabla, col_mapa = st.columns([5, 5])
-            
             with col_tabla:
-                st.markdown("### Lista de Ubicaciones")
-                # Preparamos la tabla para mostrar
-                tabla_mostrar = resultados[['nombre', 'edificio', 'piso']].copy()
-                tabla_mostrar.columns = ['Nombre/Sala', 'Edificio', 'Piso']
-                st.table(tabla_mostrar) # Esto genera la tabla que viste en tus imágenes
+                st.markdown("### Opciones Disponibles")
+                # Preparamos la tabla según tus imágenes del Excel
+                tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
+                tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
+                st.table(tabla_vista)
             
             with col_mapa:
-                st.image("imagenes/general.jpg", use_container_width=True, caption="Plano General de Sedes")
+                st.image("imagenes/general.jpg", use_container_width=True, caption="Ubicación General")
         
-        # CASO B: Resultado único (Ej: CASE, LC3)
+        # Si es un lugar único (CASE o sala específica)
         else:
             res = resultados.iloc[0]
             edificio_valor = str(res.get('edificio', ''))
+            st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", "").upper()}**</div>', unsafe_allow_html=True)
             
-            st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
-
             col_info, col_mapa = st.columns([4, 6])
             with col_info:
                 st.markdown("### Detalles de Ubicación")
-                st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
-                st.write(f"**Referencia:** {str(res.get('sala', 'N/A')).upper()}")
                 st.write(f"**Edificio:** {edificio_valor}")
                 st.write(f"**Piso:** {res.get('piso', 'N/A')}")
             
             with col_mapa:
                 nombre_archivo = normalizar_edificio(edificio_valor)
-                ruta = f"imagenes/{nombre_archivo}.jpg"
-                if os.path.exists(ruta):
-                    st.image(ruta, use_container_width=True)
-                else:
-                    st.warning(f"Imagen no encontrada: {ruta}")
+                st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
     else:
         st.warning(f"No se encontró información para '{query_actual}'")
-
 else:
-    # Lógica de navegación normal
-    if seleccion_mapa == "Inicio":
-        st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
-        img = "imagenes/general.jpg"
-    else:
-        archivo_sel = normalizar_edificio(seleccion_mapa)
-        st.markdown(f"<h3 style='text-align: center;'>{seleccion_mapa}</h3>", unsafe_allow_html=True)
-        img = f"imagenes/{archivo_sel}.jpg"
-    
-    if os.path.exists(img):
-        st.image(img, use_container_width=True)
+    # Vista de navegación por defecto
+    archivo_sel = "general" if seleccion_mapa == "Inicio" else normalizar_edificio(seleccion_mapa)
+    st.image(f"imagenes/{archivo_sel}.jpg", use_container_width=True)
