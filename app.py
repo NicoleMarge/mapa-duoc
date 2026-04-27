@@ -14,7 +14,6 @@ st.markdown("""
     .main { background-color: #ffffff; }
     .stTitle { font-size: 35px !important; font-weight: bold; padding-bottom: 20px; }
     
-    /* Estilo para que los botones de Streamlit parezcan etiquetas de categoría */
     div.stButton > button {
         border-radius: 15px;
         background-color: #f8f9fa;
@@ -24,7 +23,6 @@ st.markdown("""
         border: 1px solid #e9ecef;
         padding: 4px 12px;
         height: auto;
-        transition: all 0.3s;
     }
     div.stButton > button:hover {
         border-color: #004680;
@@ -73,10 +71,10 @@ def normalizar_edificio(nombre):
     return nombre.lower().replace(" ", "")
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR Y LÓGICA DE ESTADO
+# 3. INTERFAZ SUPERIOR Y MANEJO DE ESTADO
 # ==========================================
 
-# Inicializar el estado de búsqueda si no existe
+# Inicializar la clave en session_state si no existe
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
 
@@ -95,6 +93,7 @@ with col_nav:
     )
 
 with col_bus:
+    # Usamos el session_state directamente en el widget
     query = st.text_input(
         "Buscador:", 
         placeholder="Busca tu sala (ej: LC3)...", 
@@ -102,25 +101,26 @@ with col_bus:
         key="busqueda_sala"
     )
 
-# --- SECCIÓN DE CATEGORÍAS (BOTONES INTERACTIVOS) ---
-# Usamos columnas pequeñas para que parezcan etiquetas una al lado de la otra
-cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3]) # Ajuste de anchos
+# --- CATEGORÍAS (BOTONES) ---
+cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3])
+
+# Función auxiliar para actualizar búsqueda sin causar error de API
+def set_search(val):
+    st.session_state["busqueda_sala"] = val
+    st.rerun()
 
 with cat_cols[0]:
-    if st.button("📖 Salas"): st.session_state["busqueda_sala"] = "Salas"; st.rerun()
+    if st.button("📖 Salas"): set_search("Salas")
 with cat_cols[1]:
-    if st.button("🚻 Baños"): st.session_state["busqueda_sala"] = "Baños"; st.rerun()
+    if st.button("🚻 Baños"): set_search("Baños")
 with cat_cols[2]:
-    # --- ESTE ES EL BOTÓN QUE SOLICITASTE ---
-    if st.button("🎓 CASE"): 
-        st.session_state["busqueda_sala"] = "CASE"
-        st.rerun()
+    if st.button("🎓 CASE"): set_search("CASE")
 with cat_cols[3]:
-    if st.button("💡 Punto Estudiantil"): st.session_state["busqueda_sala"] = "Punto Estudiantil"; st.rerun()
+    if st.button("💡 Punto Estudiantil"): set_search("Punto Estudiantil")
 with cat_cols[4]:
-    if st.button("📚 Biblioteca"): st.session_state["busqueda_sala"] = "Biblioteca"; st.rerun()
+    if st.button("📚 Biblioteca"): set_search("Biblioteca")
 with cat_cols[5]:
-    if st.button("☕ Alimentación"): st.session_state["busqueda_sala"] = "Alimentación"; st.rerun()
+    if st.button("☕ Alimentación"): set_search("Alimentación")
 
 st.markdown("---")
 
@@ -128,13 +128,12 @@ st.markdown("---")
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 
-# Limpiar búsqueda si se selecciona Inicio
+# Si el usuario vuelve a inicio, vaciamos la query local
 if seleccion_mapa == "Inicio":
     query = ""
 
 if query and not df.empty:
     q = query.strip().lower()
-    # Buscamos coincidencias en el DataFrame (incluyendo la palabra "CASE")
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
@@ -157,12 +156,12 @@ if query and not df.empty:
             if os.path.exists(ruta):
                 st.image(ruta, use_container_width=True)
             else:
-                st.info(f"Mostrando ubicación en el mapa... ({archivo}.jpg)")
+                st.info(f"Ubicación aproximada en {edificio_nom}")
     else:
         st.warning(f"No se encontró información para '{query}'")
 
 else:
-    # Vista de navegación general
+    # Vista general
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
