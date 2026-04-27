@@ -74,11 +74,15 @@ def normalizar_edificio(nombre):
 # 3. INTERFAZ SUPERIOR Y MANEJO DE ESTADO
 # ==========================================
 
-# Inicializar la clave en session_state si no existe
+# 1. Inicializamos el estado si no existe
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
 
-def limpiar_buscador():
+# 2. Funciones de Callback (La forma correcta de actualizar widgets con keys)
+def cambiar_busqueda(texto):
+    st.session_state["busqueda_sala"] = texto
+
+def limpiar_todo():
     st.session_state["busqueda_sala"] = ""
 
 col_nav, col_bus = st.columns([6, 4])
@@ -89,11 +93,11 @@ with col_nav:
         ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
         horizontal=True, 
         label_visibility="collapsed",
-        on_change=limpiar_buscador
+        on_change=limpiar_todo # Limpia al cambiar de edificio
     )
 
 with col_bus:
-    # Usamos el session_state directamente en el widget
+    # El widget "es dueño" de la clave busqueda_sala
     query = st.text_input(
         "Buscador:", 
         placeholder="Busca tu sala (ej: LC3)...", 
@@ -101,26 +105,22 @@ with col_bus:
         key="busqueda_sala"
     )
 
-# --- CATEGORÍAS (BOTONES) ---
+# --- CATEGORÍAS (Usando args en el botón para evitar el error de API) ---
 cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3])
 
-# Función auxiliar para actualizar búsqueda sin causar error de API
-def set_search(val):
-    st.session_state["busqueda_sala"] = val
-    st.rerun()
-
 with cat_cols[0]:
-    if st.button("📖 Salas"): set_search("Salas")
+    st.button("📖 Salas", on_click=cambiar_busqueda, args=("Salas",))
 with cat_cols[1]:
-    if st.button("🚻 Baños"): set_search("Baños")
+    st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baños",))
 with cat_cols[2]:
-    if st.button("🎓 CASE"): set_search("CASE")
+    # BOTÓN CASE: Llama a la función antes de renderizar el buscador
+    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
 with cat_cols[3]:
-    if st.button("💡 Punto Estudiantil"): set_search("Punto Estudiantil")
+    st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
 with cat_cols[4]:
-    if st.button("📚 Biblioteca"): set_search("Biblioteca")
+    st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("Biblioteca",))
 with cat_cols[5]:
-    if st.button("☕ Alimentación"): set_search("Alimentación")
+    st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("Alimentación",))
 
 st.markdown("---")
 
@@ -128,25 +128,24 @@ st.markdown("---")
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 
-# Si el usuario vuelve a inicio, vaciamos la query local
-if seleccion_mapa == "Inicio":
-    query = ""
+# Si el usuario selecciona Inicio, nos aseguramos de que la query esté vacía
+final_query = query if seleccion_mapa != "Inicio" else ""
 
-if query and not df.empty:
-    q = query.strip().lower()
+if final_query and not df.empty:
+    q = final_query.strip().lower()
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
         res = resultado.iloc[0]
         edificio_nom = str(res.get('edificio', 'Edificio 1'))
         
-        st.markdown(f'<div class="success-text">✅ Coincidencia encontrada: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
 
         col_info, col_mapa = st.columns([4, 6])
         with col_info:
-            st.markdown("### Detalles de Ubicación")
+            st.markdown("### Detalles")
             st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
-            st.write(f"**Dependencia:** {str(res.get('sala', 'N/A')).upper()}")
+            st.write(f"**Sala/Ref:** {str(res.get('sala', 'N/A')).upper()}")
             st.write(f"**Edificio:** {edificio_nom}")
             st.write(f"**Piso:** {res.get('piso', 'N/A')}")
         
@@ -156,12 +155,12 @@ if query and not df.empty:
             if os.path.exists(ruta):
                 st.image(ruta, use_container_width=True)
             else:
-                st.info(f"Ubicación aproximada en {edificio_nom}")
+                st.info(f"Mostrando mapa de {edificio_nom}")
     else:
-        st.warning(f"No se encontró información para '{query}'")
+        st.warning(f"No se encontró información para '{final_query}'")
 
 else:
-    # Vista general
+    # Vista general de edificios
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
