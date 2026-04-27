@@ -14,7 +14,7 @@ st.markdown("""
     .main { background-color: #ffffff; }
     .stTitle { font-size: 35px !important; font-weight: bold; padding-bottom: 20px; }
     
-    /* Estilo para etiquetas de categorías */
+    /* Estilo para etiquetas de categorías más estético */
     .categoria-tag {
         display: inline-block;
         padding: 6px 14px;
@@ -61,13 +61,11 @@ def cargar_datos_seguros():
 
 df = cargar_datos_seguros()
 
-# Función crítica: Corrige el error de 'edificioi.jpg' traduciendo Romano a Número
 def normalizar_edificio(nombre):
     nombre = str(nombre).upper()
     if 'EDIFICIO I' in nombre and 'II' not in nombre: return "edificio1"
     if 'EDIFICIO II' in nombre: return "edificio2"
     if 'EDIFICIO III' in nombre: return "edificio3"
-    # Si ya contiene un número arábigo o es "Inicio"
     return nombre.lower().replace(" ", "")
 
 # ==========================================
@@ -76,17 +74,12 @@ def normalizar_edificio(nombre):
 col_nav, col_bus = st.columns([6, 4])
 
 with col_nav:
-    seleccion_mapa = st.radio(
-        "Navegación:", 
-        ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
-        horizontal=True, 
-        label_visibility="collapsed"
-    )
+    seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], horizontal=True, label_visibility="collapsed")
 
 with col_bus:
     query = st.text_input("Buscador:", placeholder="Busca tu sala (ej: LC3)...", label_visibility="collapsed")
 
-# Categorías visibles permanentemente debajo del menú
+# --- CATEGORÍAS ACTUALIZADAS (CON ALIMENTACIÓN) ---
 st.markdown("""
     <div>
         <span class="categoria-tag">📖 Salas</span>
@@ -103,14 +96,8 @@ st.markdown("---")
 # ==========================================
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
-
-# REGLA: Si se marca "Inicio", forzamos el vaciado de la búsqueda para limpiar la pantalla
-if seleccion_mapa == "Inicio":
-    query = ""
-
 if query and not df.empty:
     q = query.strip().lower()
-    # Buscamos en todo el DataFrame
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
@@ -125,33 +112,26 @@ if query and not df.empty:
             st.write(f"**Sala:** {str(res.get('sala', 'N/A')).upper()}")
             st.write(f"**Edificio:** {edificio_nom}")
             st.write(f"**Piso:** {res.get('piso', 'N/A')}")
-            st.write(f"**Tipo:** {res.get('tipo', '-')}")
         
         with col_mapa:
-            # Aquí aplicamos la normalización para encontrar edificio1.jpg, etc.
             archivo = normalizar_edificio(edificio_nom)
             ruta = f"imagenes/{archivo}.jpg"
             if os.path.exists(ruta):
                 st.image(ruta, use_container_width=True)
             else:
-                st.info(f"Cargando mapa interactivo... ({archivo}.jpg)")
+                st.info(f"Cargando mapa... ({archivo}.jpg)")
     else:
         st.warning(f"No se encontró información para '{query}'")
 
 else:
-    # Esta sección se activa si el buscador está vacío o se pulsó "Inicio"
-    col_vacia, col_mapa_centrado, col_vacia2 = st.columns([1, 8, 1])
+    # Vista por defecto según navegación
+    if seleccion_mapa == "Inicio":
+        st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
+        img = "imagenes/general.jpg"
+    else:
+        archivo_sel = normalizar_edificio(seleccion_mapa)
+        st.markdown(f"<h3 style='text-align: center;'>{seleccion_mapa}</h3>", unsafe_allow_html=True)
+        img = f"imagenes/{archivo_sel}.jpg"
     
-    with col_mapa_centrado:
-        if seleccion_mapa == "Inicio":
-            st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
-            img = "imagenes/general.jpg"
-        else:
-            archivo_sel = normalizar_edificio(seleccion_mapa)
-            st.markdown(f"<h3 style='text-align: center;'>{seleccion_mapa}</h3>", unsafe_allow_html=True)
-            img = f"imagenes/{archivo_sel}.jpg"
-        
-        if os.path.exists(img):
-            st.image(img, use_container_width=True)
-        else:
-            st.error(f"Error: La imagen {img} no se encuentra en el servidor.")
+    if os.path.exists(img):
+        st.image(img, use_container_width=True)
