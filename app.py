@@ -24,13 +24,17 @@ bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if im
 
 st.markdown(f"""
     <style>
-    /* OCULTAR MENÚ SUPERIOR (SHARE, ESTRELLA, GITHUB) */
+    /* 1. OCULTAR ELEMENTOS DE INTERFAZ DE STREAMLIT */
     header[data-testid="stHeader"] {{
         visibility: hidden;
         height: 0%;
     }}
     
-    /* REAJUSTE DE MÁRGENES DE PÁGINA PARA QUE NO SE JUNTE TODO */
+    .stAppDeployButton {{
+        display: none !important;
+    }}
+
+    /* 2. AJUSTE DE MÁRGENES GENERALES */
     .block-container {{
         padding-top: 2rem !important;
         padding-bottom: 1rem !important;
@@ -38,7 +42,7 @@ st.markdown(f"""
 
     .main {{ background-color: #ffffff; }}
     
-    /* ENCABEZADO CON ALTURA NORMAL PARA EVITAR SUPERPOSICIÓN */
+    /* 3. ENCABEZADO (BANNER) */
     .header-container {{
         {bg_style}
         background-size: cover;
@@ -46,7 +50,7 @@ st.markdown(f"""
         padding: 60px 20px;
         border-radius: 15px;
         color: white;
-        margin-bottom: 25px; /* Espacio debajo del banner */
+        margin-bottom: 25px;
         text-align: left;
         box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.1);
     }}
@@ -59,7 +63,7 @@ st.markdown(f"""
         text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
     }}
 
-    /* BOTONES DE CATEGORÍAS CON MÁRGENES LIMPIOS */
+    /* 4. BOTONES DE CATEGORÍAS */
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
@@ -77,7 +81,7 @@ st.markdown(f"""
         transform: translateY(-2px);
     }}
 
-    /* ESTILO DE RESULTADOS (CUADRO VERDE) */
+    /* 5. CUADROS DE MENSAJES Y RESULTADOS */
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
