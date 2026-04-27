@@ -90,22 +90,25 @@ with col_nav:
 with col_bus:
     st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# --- CATEGORÍAS ---
-cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3])
-with cat_cols[0]: st.button("📖 Salas", on_click=cambiar_busqueda, args=("Salas",))
-with cat_cols[1]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
-with cat_cols[2]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[3]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("Punto Estudiantil",))
-with cat_cols[4]: 
-    # UNICO CAMBIO: Se actualizó el argumento a "BIBLIOTECA"
+# --- CATEGORÍAS (BOTÓN SALAS ELIMINADO) ---
+# Se ajustaron las proporciones de las columnas para mantener el equilibrio visual
+cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
+
+with cat_cols[0]: 
+    st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
+with cat_cols[1]: 
+    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
+with cat_cols[2]: 
+    st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: 
     st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[5]: 
+with cat_cols[4]: 
     st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN MULTI-RESULTADO
+# 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 query_actual = st.session_state["busqueda_sala"]
 
