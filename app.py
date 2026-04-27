@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
+import base64
 import os
 
 # ==========================================
@@ -9,16 +10,27 @@ import os
 # ==========================================
 st.set_page_config(page_title="Mapa Duoc UC", layout="wide", initial_sidebar_state="collapsed")
 
-# Ruta de la imagen en tu repositorio GitHub
-img_path = "imagenes/sede.jpg" 
+# Función para convertir la imagen local a Base64
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
+# Intentamos cargar la imagen de la sede
+try:
+    path_sede = "imagenes/sede.jpg"
+    img_base64 = get_base64_image(path_sede)
+    bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");'
+except Exception:
+    # Si falla, usamos un color azul institucional de respaldo
+    bg_style = 'background-color: #004680;'
 
 st.markdown(f"""
     <style>
     .main {{ background-color: #ffffff; }}
     
-    /* Contenedor del encabezado con imagen clara */
+    /* Contenedor del encabezado usando Base64 para máxima compatibilidad */
     .header-container {{
-        background-image: url("app/static/{img_path}");
+        {bg_style}
         background-size: cover;
         background-position: center;
         padding: 80px 20px;
@@ -26,8 +38,7 @@ st.markdown(f"""
         color: white;
         margin-bottom: 30px;
         text-align: left;
-        /* Sombra interna muy leve para dar profundidad sin oscurecer */
-        box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.05);
+        box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.1);
     }}
     
     .header-container h1 {{
@@ -35,11 +46,10 @@ st.markdown(f"""
         font-size: 55px !important;
         font-weight: bold !important;
         margin: 0;
-        /* Sombra de texto fuerte para resaltar sobre fondo claro */
-        text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+        text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
     }}
 
-    /* Estilo de botones de categorías */
+    /* Botones de categorías */
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
