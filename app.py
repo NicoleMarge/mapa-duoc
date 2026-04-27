@@ -1,15 +1,22 @@
+import streamlit as st
+import pandas as pd
+import gspread
+from google.oauth2.service_account import Credentials
+import os
+
 # ==========================================
 # 1. CONFIGURACIÓN DE LA PÁGINA Y ESTILOS
 # ==========================================
 st.set_page_config(page_title="Mapa Duoc UC", layout="wide", initial_sidebar_state="collapsed")
 
-# Definimos la ruta de la imagen que está en tu carpeta de GitHub
-# Si tu imagen se llama 'sede.jpg' y está en la carpeta 'imagenes', la ruta es:
-img_path = "imagenes/image_f20e58.jpg" 
+# Ruta de la imagen en tu repositorio GitHub
+img_path = "imagenes/sede.jpg" 
 
 st.markdown(f"""
     <style>
-    /* Contenedor principal del encabezado con imagen local */
+    .main {{ background-color: #ffffff; }}
+    
+    /* Contenedor del encabezado con imagen de fondo */
     .header-container {{
         background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("app/static/{img_path}");
         background-size: cover;
@@ -21,7 +28,6 @@ st.markdown(f"""
         text-align: left;
     }}
     
-    /* Título blanco con sombra para legibilidad */
     .header-container h1 {{
         color: white !important;
         font-size: 50px !important;
@@ -30,21 +36,38 @@ st.markdown(f"""
         text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
     }}
 
-    /* Estilo de los botones sobre la imagen */
+    /* Estilo de botones de categorías */
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
         color: #1a1a1a;
         font-weight: 700;
-        border: none;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.2);
+        border: 1px solid #e9ecef;
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        transition: all 0.3s;
     }}
     
-    /* Estilo para los radio buttons (Inicio, Edificio 1, etc) */
+    div.stButton > button:hover {{
+        border-color: #004680;
+        color: #004680;
+        background-color: #ffffff;
+        transform: translateY(-2px);
+    }}
+
+    .success-text {{ 
+        color: #155724; 
+        background-color: #d4edda; 
+        border: 1px solid #c3e6cb; 
+        padding: 10px; 
+        border-radius: 5px; 
+        font-weight: bold; 
+        margin-top: 15px;
+    }}
+    
+    /* Estilo para los radio buttons */
     .stRadio > label {{ 
-        color: white !important; 
+        color: #444 !important; 
         font-weight: bold !important;
-        text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
     }}
     </style>
     
@@ -54,8 +77,43 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR (Radio y Buscador)
+# 2. CONEXIÓN A DATOS
 # ==========================================
+@st.cache_data(ttl=86400)
+def cargar_datos_seguros():
+    try:
+        scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+        creds = Credentials.from_service_account_info(st.secrets["gsheets"], scopes=scope)
+        client = gspread.authorize(creds)
+        sheet = client.open("Base de Datos Salas Duoc").sheet1
+        df = pd.DataFrame(sheet.get_all_records())
+        df.columns = df.columns.str.strip().str.lower()
+        return df
+    except Exception as e:
+        st.error(f"Error de conexión: {e}")
+        return pd.DataFrame()
+
+df = cargar_datos_seguros()
+
+def normalizar_edificio(nombre):
+    n = str(nombre).upper().strip()
+    if 'III' in n or '3' in n: return "edificio3"
+    elif 'II' in n or '2' in n: return "edificio2"
+    elif 'I' in n or '1' in n: return "edificio1"
+    return "general"
+
+# ==========================================
+# 3. INTERFAZ SUPERIOR Y ESTADO
+# ==========================================
+if "busqueda_sala" not in st.session_state:
+    st.session_state["busqueda_sala"] = ""
+
+def cambiar_busqueda(texto):
+    st.session_state["busqueda_sala"] = texto
+
+def limpiar_todo():
+    st.session_state["busqueda_sala"] = ""
+
 col_nav, col_bus = st.columns([6, 4])
 with col_nav:
     seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
@@ -64,12 +122,65 @@ with col_nav:
 with col_bus:
     st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# Botones de categorías (Redistribuidos para el nuevo diseño)
+# --- CATEGORÍAS (SIN BOTÓN SALAS) ---
 cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
-with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
-with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[2]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
-with cat_cols[3]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[4]: st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
+
+with cat_cols[0]: 
+    st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
+with cat_cols[1]: 
+    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
+with cat_cols[2]: 
+    st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: 
+    st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
+with cat_cols[4]: 
+    st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
+
+# ==========================================
+# 4. LÓGICA DE VISUALIZACIÓN
+# ==========================================
+query_actual = st.session_state["busqueda_sala"]
+
+if query_actual and not df.empty:
+    q = query_actual.strip().lower()
+    resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
+    
+    if not resultados.empty:
+        # Caso: Múltiples resultados (Ej: Baños, Alimentación)
+        if len(resultados) > 1:
+            st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
+            
+            col_tabla, col_mapa = st.columns([5, 5])
+            with col_tabla:
+                st.markdown("### Opciones Disponibles")
+                tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
+                tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
+                st.table(tabla_vista)
+            
+            with col_mapa:
+                st.image("imagenes/general.jpg", use_container_width=True, caption="Ubicación General")
+        
+        # Caso: Resultado único (Ej: CASE, Biblioteca, Punto Estudiantil)
+        else:
+            res = resultados.iloc[0]
+            edificio_valor = str(res.get('edificio', ''))
+            st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", "").upper()}**</div>', unsafe_allow_html=True)
+            
+            col_info, col_mapa = st.columns([4, 6])
+            with col_info:
+                st.markdown("### Detalles de Ubicación")
+                st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
+                st.write(f"**Edificio:** {edificio_valor}")
+                st.write(f"**Piso:** {res.get('piso', 'N/A')}")
+            
+            with col_mapa:
+                nombre_archivo = normalizar_edificio(edificio_valor)
+                st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
+    else:
+        st.warning(f"No se encontró información para '{query_actual}'")
+else:
+    # Vista por defecto según radio button
+    archivo_sel = "general" if seleccion_mapa == "Inicio" else normalizar_edificio(seleccion_mapa)
+    st.image(f"imagenes/{archivo_sel}.jpg", use_container_width=True)
