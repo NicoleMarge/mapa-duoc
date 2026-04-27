@@ -16,24 +16,27 @@ st.markdown(f"""
     <style>
     .main {{ background-color: #ffffff; }}
     
-    /* Contenedor del encabezado con imagen de fondo */
+    /* Contenedor del encabezado con imagen clara */
     .header-container {{
-        background-image: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url("app/static/{img_path}");
+        background-image: url("app/static/{img_path}");
         background-size: cover;
         background-position: center;
-        padding: 60px 20px;
+        padding: 80px 20px;
         border-radius: 15px;
         color: white;
         margin-bottom: 30px;
         text-align: left;
+        /* Sombra interna muy leve para dar profundidad sin oscurecer */
+        box-shadow: inset 0 0 0 1000px rgba(0,0,0,0.05);
     }}
     
     .header-container h1 {{
         color: white !important;
-        font-size: 50px !important;
+        font-size: 55px !important;
         font-weight: bold !important;
         margin: 0;
-        text-shadow: 3px 3px 6px rgba(0,0,0,0.8);
+        /* Sombra de texto fuerte para resaltar sobre fondo claro */
+        text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
     }}
 
     /* Estilo de botones de categorías */
@@ -64,7 +67,6 @@ st.markdown(f"""
         margin-top: 15px;
     }}
     
-    /* Estilo para los radio buttons */
     .stRadio > label {{ 
         color: #444 !important; 
         font-weight: bold !important;
@@ -122,19 +124,13 @@ with col_nav:
 with col_bus:
     st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# --- CATEGORÍAS (SIN BOTÓN SALAS) ---
+# --- CATEGORÍAS ---
 cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
-
-with cat_cols[0]: 
-    st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
-with cat_cols[1]: 
-    st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[2]: 
-    st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
-with cat_cols[3]: 
-    st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[4]: 
-    st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
+with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
+with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
+with cat_cols[2]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
+with cat_cols[4]: st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
 
@@ -148,39 +144,31 @@ if query_actual and not df.empty:
     resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultados.empty:
-        # Caso: Múltiples resultados (Ej: Baños, Alimentación)
         if len(resultados) > 1:
             st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
-            
             col_tabla, col_mapa = st.columns([5, 5])
             with col_tabla:
                 st.markdown("### Opciones Disponibles")
                 tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
                 tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
                 st.table(tabla_vista)
-            
             with col_mapa:
-                st.image("imagenes/general.jpg", use_container_width=True, caption="Ubicación General")
-        
-        # Caso: Resultado único (Ej: CASE, Biblioteca, Punto Estudiantil)
+                st.image("imagenes/general.jpg", use_container_width=True)
         else:
             res = resultados.iloc[0]
             edificio_valor = str(res.get('edificio', ''))
             st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", "").upper()}**</div>', unsafe_allow_html=True)
-            
             col_info, col_mapa = st.columns([4, 6])
             with col_info:
                 st.markdown("### Detalles de Ubicación")
                 st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
                 st.write(f"**Edificio:** {edificio_valor}")
                 st.write(f"**Piso:** {res.get('piso', 'N/A')}")
-            
             with col_mapa:
                 nombre_archivo = normalizar_edificio(edificio_valor)
                 st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
     else:
         st.warning(f"No se encontró información para '{query_actual}'")
 else:
-    # Vista por defecto según radio button
     archivo_sel = "general" if seleccion_mapa == "Inicio" else normalizar_edificio(seleccion_mapa)
     st.image(f"imagenes/{archivo_sel}.jpg", use_container_width=True)
