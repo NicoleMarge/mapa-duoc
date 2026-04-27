@@ -14,17 +14,22 @@ st.markdown("""
     .main { background-color: #ffffff; }
     .stTitle { font-size: 35px !important; font-weight: bold; padding-bottom: 20px; }
     
-    .categoria-tag {
-        display: inline-block;
-        padding: 6px 14px;
-        margin: 5px 3px;
+    /* Estilo para que los botones de Streamlit parezcan etiquetas de categoría */
+    div.stButton > button {
         border-radius: 15px;
         background-color: #f8f9fa;
         color: #444;
         font-weight: 600;
         font-size: 13px;
         border: 1px solid #e9ecef;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        padding: 4px 12px;
+        height: auto;
+        transition: all 0.3s;
+    }
+    div.stButton > button:hover {
+        border-color: #004680;
+        color: #004680;
+        background-color: #eef6ff;
     }
     
     .success-text { 
@@ -68,17 +73,19 @@ def normalizar_edificio(nombre):
     return nombre.lower().replace(" ", "")
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR (LÓGICA DE LIMPIEZA)
+# 3. INTERFAZ SUPERIOR Y LÓGICA DE ESTADO
 # ==========================================
 
-# Creamos una función para limpiar el buscador al hacer clic en los edificios
+# Inicializar el estado de búsqueda si no existe
+if "busqueda_sala" not in st.session_state:
+    st.session_state["busqueda_sala"] = ""
+
 def limpiar_buscador():
     st.session_state["busqueda_sala"] = ""
 
 col_nav, col_bus = st.columns([6, 4])
 
 with col_nav:
-    # Si seleccionamos un edificio, se dispara 'limpiar_buscador'
     seleccion_mapa = st.radio(
         "Navegación:", 
         ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
@@ -88,10 +95,6 @@ with col_nav:
     )
 
 with col_bus:
-    # Vinculamos el texto del buscador al session_state
-    if "busqueda_sala" not in st.session_state:
-        st.session_state["busqueda_sala"] = ""
-    
     query = st.text_input(
         "Buscador:", 
         placeholder="Busca tu sala (ej: LC3)...", 
@@ -99,17 +102,25 @@ with col_bus:
         key="busqueda_sala"
     )
 
-# --- CATEGORÍAS ---
-st.markdown("""
-    <div>
-        <span class="categoria-tag">📖 Salas</span>
-        <span class="categoria-tag">🚻 Baños</span>
-        <span class="categoria-tag">🎓 CASE</span>
-        <span class="categoria-tag">💡 Punto Estudiantil</span>
-        <span class="categoria-tag">📚 Biblioteca</span>
-        <span class="categoria-tag">☕ Alimentación</span>
-    </div>
-""", unsafe_allow_html=True)
+# --- SECCIÓN DE CATEGORÍAS (BOTONES INTERACTIVOS) ---
+# Usamos columnas pequeñas para que parezcan etiquetas una al lado de la otra
+cat_cols = st.columns([1, 1, 1, 1.2, 1.2, 1.2, 3]) # Ajuste de anchos
+
+with cat_cols[0]:
+    if st.button("📖 Salas"): st.session_state["busqueda_sala"] = "Salas"; st.rerun()
+with cat_cols[1]:
+    if st.button("🚻 Baños"): st.session_state["busqueda_sala"] = "Baños"; st.rerun()
+with cat_cols[2]:
+    # --- ESTE ES EL BOTÓN QUE SOLICITASTE ---
+    if st.button("🎓 CASE"): 
+        st.session_state["busqueda_sala"] = "CASE"
+        st.rerun()
+with cat_cols[3]:
+    if st.button("💡 Punto Estudiantil"): st.session_state["busqueda_sala"] = "Punto Estudiantil"; st.rerun()
+with cat_cols[4]:
+    if st.button("📚 Biblioteca"): st.session_state["busqueda_sala"] = "Biblioteca"; st.rerun()
+with cat_cols[5]:
+    if st.button("☕ Alimentación"): st.session_state["busqueda_sala"] = "Alimentación"; st.rerun()
 
 st.markdown("---")
 
@@ -117,21 +128,26 @@ st.markdown("---")
 # 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 
-# Solo buscamos sala SI hay algo escrito. Si acabas de cambiar de edificio, query estará vacío.
+# Limpiar búsqueda si se selecciona Inicio
+if seleccion_mapa == "Inicio":
+    query = ""
+
 if query and not df.empty:
     q = query.strip().lower()
+    # Buscamos coincidencias en el DataFrame (incluyendo la palabra "CASE")
     resultado = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
     
     if not resultado.empty:
         res = resultado.iloc[0]
         edificio_nom = str(res.get('edificio', 'Edificio 1'))
         
-        st.markdown(f'<div class="success-text">✅ {res.get("sala", "").upper()} encontrada en el **{edificio_nom}**</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="success-text">✅ Coincidencia encontrada: **{res.get("nombre", res.get("sala", "")).upper()}**</div>', unsafe_allow_html=True)
 
         col_info, col_mapa = st.columns([4, 6])
         with col_info:
-            st.markdown("### Información seleccionada")
-            st.write(f"**Sala:** {str(res.get('sala', 'N/A')).upper()}")
+            st.markdown("### Detalles de Ubicación")
+            st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
+            st.write(f"**Dependencia:** {str(res.get('sala', 'N/A')).upper()}")
             st.write(f"**Edificio:** {edificio_nom}")
             st.write(f"**Piso:** {res.get('piso', 'N/A')}")
         
@@ -141,12 +157,12 @@ if query and not df.empty:
             if os.path.exists(ruta):
                 st.image(ruta, use_container_width=True)
             else:
-                st.info(f"Cargando mapa... ({archivo}.jpg)")
+                st.info(f"Mostrando ubicación en el mapa... ({archivo}.jpg)")
     else:
         st.warning(f"No se encontró información para '{query}'")
 
 else:
-    # Vista por defecto según navegación (Se activa al cambiar de botón)
+    # Vista de navegación general
     if seleccion_mapa == "Inicio":
         st.markdown("<h3 style='text-align: center;'>Plano General de Sedes</h3>", unsafe_allow_html=True)
         img = "imagenes/general.jpg"
@@ -157,5 +173,3 @@ else:
     
     if os.path.exists(img):
         st.image(img, use_container_width=True)
-    else:
-        st.error(f"No se encontró la imagen: {img}")
