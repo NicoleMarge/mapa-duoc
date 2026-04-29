@@ -18,39 +18,20 @@ def get_base64_image(image_path):
     except Exception:
         return None
 
-# Intentamos cargar la imagen de la sede
+# Carga de imagen de encabezado
 img_base64 = get_base64_image("imagenes/sede.jpg")
 bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
 
 st.markdown(f"""
     <style>
-    /* 1. OCULTAR MENÚ SUPERIOR Y "MANAGE APP" */
-    header[data-testid="stHeader"] {{
-        visibility: hidden;
-        height: 0%;
-    }}
-    
-    /* Selector para el botón de Manage App y la barra flotante inferior */
-    [data-testid="stStatusWidget"], .stAppDeployButton, [data-testid="stAppDeployButton"] {{
-        display: none !important;
-    }}
-    
-    /* Forzar ocultamiento de cualquier barra de herramientas inferior */
-    footer {{
-        display: none !important;
-    }}
-    
+    header[data-testid="stHeader"] {{ visibility: hidden; height: 0%; }}
+    [data-testid="stStatusWidget"], .stAppDeployButton, [data-testid="stAppDeployButton"] {{ display: none !important; }}
+    footer {{ display: none !important; }}
     #MainMenu {{visibility: hidden;}}
 
-    /* 2. AJUSTE DE MÁRGENES GENERALES */
-    .block-container {{
-        padding-top: 2rem !important;
-        padding-bottom: 1rem !important;
-    }}
-
+    .block-container {{ padding-top: 2rem !important; padding-bottom: 1rem !important; }}
     .main {{ background-color: #ffffff; }}
     
-    /* 3. ENCABEZADO (BANNER) */
     .header-container {{
         {bg_style}
         background-size: cover;
@@ -71,7 +52,6 @@ st.markdown(f"""
         text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
     }}
 
-    /* 4. BOTONES DE CATEGORÍAS */
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
@@ -80,16 +60,8 @@ st.markdown(f"""
         border: 1px solid #e9ecef;
         box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
         transition: all 0.3s;
-        margin-bottom: 5px;
     }}
     
-    div.stButton > button:hover {{
-        border-color: #004680;
-        color: #004680;
-        transform: translateY(-2px);
-    }}
-
-    /* 5. CUADROS DE RESULTADOS */
     .success-text {{ 
         color: #155724; 
         background-color: #d4edda; 
@@ -97,13 +69,13 @@ st.markdown(f"""
         padding: 10px; 
         border-radius: 8px; 
         font-weight: bold; 
-        margin-top: 10px;
         margin-bottom: 15px;
     }}
-    
-    .stRadio > label {{ 
-        color: #444 !important; 
-        font-weight: bold !important;
+
+    .map-container {{
+        border: 2px solid #888;
+        border-radius: 4px;
+        overflow: hidden;
     }}
     </style>
     
@@ -113,7 +85,7 @@ st.markdown(f"""
     """, unsafe_allow_html=True)
 
 # ==========================================
-# 2. CONEXIÓN A DATOS
+# 2. CONEXIÓN A DATOS (GOOGLE SHEETS)
 # ==========================================
 @st.cache_data(ttl=86400)
 def cargar_datos_seguros():
@@ -125,7 +97,7 @@ def cargar_datos_seguros():
         df = pd.DataFrame(sheet.get_all_records())
         df.columns = df.columns.str.strip().str.lower()
         return df
-    except Exception as e:
+    except Exception:
         return pd.DataFrame()
 
 df = cargar_datos_seguros()
@@ -138,7 +110,7 @@ def normalizar_edificio(nombre):
     return "general"
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR Y ESTADO
+# 3. INTERFAZ SUPERIOR
 # ==========================================
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
@@ -146,18 +118,18 @@ if "busqueda_sala" not in st.session_state:
 def cambiar_busqueda(texto):
     st.session_state["busqueda_sala"] = texto
 
-def limpiar_todo():
+def limpiar_busqueda():
     st.session_state["busqueda_sala"] = ""
 
 col_nav, col_bus = st.columns([6, 4])
 with col_nav:
     seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
-                              horizontal=True, label_visibility="collapsed", on_change=limpiar_todo)
+                              horizontal=True, label_visibility="collapsed", on_change=limpiar_busqueda)
 
 with col_bus:
     st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# --- CATEGORÍAS ---
+# Categorías
 cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
@@ -168,40 +140,69 @@ with cat_cols[4]: st.button("☕ Alimentación", on_click=cambiar_busqueda, args
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN
+# 4. LÓGICA DE FILTRADO UNIFICADA
 # ==========================================
 query_actual = st.session_state["busqueda_sala"]
+resultados = pd.DataFrame()
+titulo_filtro = ""
 
+# Prioridad 1: Si hay algo escrito en el buscador o se presionó un botón de categoría
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
     resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
+    titulo_filtro = query_actual.upper()
+
+# Prioridad 2: Si se seleccionó un Edificio en el Radio Button (Círculo Rojo)
+elif seleccion_mapa != "Inicio" and not df.empty:
+    if "1" in seleccion_mapa: 
+        termino = "EDIFICIO I"
+    elif "2" in seleccion_mapa: 
+        termino = "EDIFICIO II"
+    else: 
+        termino = "EDIFICIO III"
     
-    if not resultados.empty:
-        if len(resultados) > 1:
-            st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{query_actual.upper()}**</div>', unsafe_allow_html=True)
-            col_tabla, col_mapa = st.columns([5, 5])
-            with col_tabla:
-                st.markdown("### Opciones Disponibles")
-                tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
-                tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
-                st.table(tabla_vista)
-            with col_mapa:
-                st.image("imagenes/general.jpg", use_container_width=True)
-        else:
-            res = resultados.iloc[0]
-            edificio_valor = str(res.get('edificio', ''))
-            st.markdown(f'<div class="success-text">✅ Encontrado: **{res.get("nombre", "").upper()}**</div>', unsafe_allow_html=True)
-            col_info, col_mapa = st.columns([4, 6])
-            with col_info:
-                st.markdown("### Detalles de Ubicación")
-                st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
-                st.write(f"**Edificio:** {edificio_valor}")
-                st.write(f"**Piso:** {res.get('piso', 'N/A')}")
-            with col_mapa:
-                nombre_archivo = normalizar_edificio(edificio_valor)
-                st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
+    resultados = df[df['edificio'].astype(str).str.upper().str.contains(termino, na=False)]
+    titulo_filtro = termino
+
+# --- RENDERIZADO DE RESULTADOS ---
+if not resultados.empty:
+    # Banner verde
+    st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{titulo_filtro}**</div>', unsafe_allow_html=True)
+    
+    # Si hay múltiples resultados o es una vista de edificio completo
+    if len(resultados) > 1 or seleccion_mapa != "Inicio":
+        col_tabla, col_mapa = st.columns([5, 5])
+        with col_tabla:
+            st.markdown(f"### Opciones Disponibles para: {titulo_filtro}")
+            tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
+            tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
+            st.table(tabla_vista)
+            
+        with col_mapa:
+            ed_ref = str(resultados.iloc[0].get('edificio', ''))
+            nombre_archivo = normalizar_edificio(ed_ref)
+            st.markdown('<div class="map-container">', unsafe_allow_html=True)
+            st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+            
+    # Si es un resultado único (Búsqueda específica de sala)
     else:
-        st.warning(f"No se encontró información para '{query_actual}'")
+        res = resultados.iloc[0]
+        col_info, col_mapa = st.columns([4, 6])
+        with col_info:
+            st.markdown("### Detalles de Ubicación")
+            st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
+            st.write(f"**Edificio:** {res.get('edificio', 'N/A')}")
+            st.write(f"**Piso:** {res.get('piso', 'N/A')}")
+        with col_mapa:
+            nombre_archivo = normalizar_edificio(res.get('edificio', ''))
+            st.markdown('<div class="map-container">', unsafe_allow_html=True)
+            st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+# CASO: Inicio o sin resultados
 else:
-    archivo_sel = "general" if seleccion_mapa == "Inicio" else normalizar_edificio(seleccion_mapa)
-    st.image(f"imagenes/{archivo_sel}.jpg", use_container_width=True)
+    if seleccion_mapa == "Inicio" and not query_actual:
+        st.image("imagenes/general.jpg", use_container_width=True)
+    elif query_actual:
+        st.warning(f"No se encontró información para '{query_actual}'")
