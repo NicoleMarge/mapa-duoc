@@ -10,7 +10,6 @@ import os
 # ==========================================
 st.set_page_config(page_title="Mapa Duoc UC", layout="wide", initial_sidebar_state="collapsed")
 
-# Función para convertir la imagen local a Base64
 def get_base64_image(image_path):
     try:
         with open(image_path, "rb") as img_file:
@@ -18,20 +17,19 @@ def get_base64_image(image_path):
     except Exception:
         return None
 
-# Carga de imagen de encabezado
 img_base64 = get_base64_image("imagenes/sede.jpg")
 bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
 
 st.markdown(f"""
     <style>
+    /* Ocultar elementos de Streamlit */
     header[data-testid="stHeader"] {{ visibility: hidden; height: 0%; }}
     [data-testid="stStatusWidget"], .stAppDeployButton, [data-testid="stAppDeployButton"] {{ display: none !important; }}
     footer {{ display: none !important; }}
-    #MainMenu {{visibility: hidden;}}
-
-    .block-container {{ padding-top: 2rem !important; padding-bottom: 1rem !important; }}
+    
     .main {{ background-color: #ffffff; }}
     
+    /* Banner Superior */
     .header-container {{
         {bg_style}
         background-size: cover;
@@ -52,6 +50,20 @@ st.markdown(f"""
         text-shadow: 3px 3px 10px rgba(0,0,0,0.8);
     }}
 
+    /* Estilo Barra Verde (Éxito) */
+    .success-text {{ 
+        color: #155724; 
+        background-color: #d4edda; 
+        border: 1px solid #c3e6cb; 
+        padding: 12px; 
+        border-radius: 8px; 
+        font-weight: bold; 
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+    }}
+
+    /* Botones de Categorías */
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
@@ -62,19 +74,9 @@ st.markdown(f"""
         transition: all 0.3s;
     }}
     
-    .success-text {{ 
-        color: #155724; 
-        background-color: #d4edda; 
-        border: 1px solid #c3e6cb; 
-        padding: 10px; 
-        border-radius: 8px; 
-        font-weight: bold; 
-        margin-bottom: 15px;
-    }}
-
     .map-container {{
-        border: 2px solid #888;
-        border-radius: 4px;
+        border: 2px solid #d1d1d1;
+        border-radius: 8px;
         overflow: hidden;
     }}
     </style>
@@ -110,7 +112,7 @@ def normalizar_edificio(nombre):
     return "general"
 
 # ==========================================
-# 3. INTERFAZ SUPERIOR
+# 3. INTERFAZ Y ESTADO
 # ==========================================
 if "busqueda_sala" not in st.session_state:
     st.session_state["busqueda_sala"] = ""
@@ -129,80 +131,62 @@ with col_nav:
 with col_bus:
     st.text_input("Buscador:", placeholder="Busca tu sala...", label_visibility="collapsed", key="busqueda_sala")
 
-# Categorías
-cat_cols = st.columns([1, 1, 1.2, 1.2, 1.2, 4])
+# Botones de Categorías
+cat_cols = st.columns([1, 1, 1.3, 1.2, 1.2, 4])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
 with cat_cols[2]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
 with cat_cols[3]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[4]: st.button("☕ Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
+with cat_cols[4]: st.button("🍴 Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
 
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE FILTRADO UNIFICADA
+# 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 query_actual = st.session_state["busqueda_sala"]
 resultados = pd.DataFrame()
-titulo_filtro = ""
+titulo_seccion = ""
 
-# Prioridad 1: Si hay algo escrito en el buscador o se presionó un botón de categoría
+# Determinar fuente de filtrado
 if query_actual and not df.empty:
     q = query_actual.strip().lower()
     resultados = df[df.apply(lambda row: q in str(row.values).lower(), axis=1)]
-    titulo_filtro = query_actual.upper()
-
-# Prioridad 2: Si se seleccionó un Edificio en el Radio Button (Círculo Rojo)
+    titulo_seccion = query_actual.upper()
 elif seleccion_mapa != "Inicio" and not df.empty:
-    if "1" in seleccion_mapa: 
-        termino = "EDIFICIO I"
-    elif "2" in seleccion_mapa: 
-        termino = "EDIFICIO II"
-    else: 
-        termino = "EDIFICIO III"
-    
+    termino = "EDIFICIO I" if "1" in seleccion_mapa else "EDIFICIO II" if "2" in seleccion_mapa else "EDIFICIO III"
     resultados = df[df['edificio'].astype(str).str.upper().str.contains(termino, na=False)]
-    titulo_filtro = termino
+    titulo_seccion = termino
 
-# --- RENDERIZADO DE RESULTADOS ---
+# Renderizar Resultados
 if not resultados.empty:
-    # Banner verde
-    st.markdown(f'<div class="success-text">✅ Se encontraron {len(resultados)} opciones para: **{titulo_filtro}**</div>', unsafe_allow_html=True)
+    # Barra verde solo con el nombre
+    st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
-    # Si hay múltiples resultados o es una vista de edificio completo
     if len(resultados) > 1 or seleccion_mapa != "Inicio":
+        # Vista de Listado (Tabla + Mapa)
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
-            st.markdown(f"### Opciones Disponibles para: {titulo_filtro}")
-            tabla_vista = resultados[['nombre', 'edificio', 'piso']].copy()
-            tabla_vista.columns = ['Lugar', 'Edificio', 'Piso']
-            st.table(tabla_vista)
-            
+            st.markdown("### Opciones Disponibles")
+            vista = resultados[['nombre', 'edificio', 'piso']].copy()
+            vista.columns = ['Lugar', 'Edificio', 'Piso']
+            st.table(vista)
         with col_mapa:
             ed_ref = str(resultados.iloc[0].get('edificio', ''))
-            nombre_archivo = normalizar_edificio(ed_ref)
-            st.markdown('<div class="map-container">', unsafe_allow_html=True)
-            st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-    # Si es un resultado único (Búsqueda específica de sala)
+            archivo = normalizar_edificio(ed_ref)
+            st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
     else:
+        # Vista de Detalle Individual
         res = resultados.iloc[0]
+        st.subheader("Detalle de Ubicación")
         col_info, col_mapa = st.columns([4, 6])
         with col_info:
-            st.markdown("### Detalles de Ubicación")
-            st.write(f"**Nombre:** {res.get('nombre', 'N/A')}")
-            st.write(f"**Edificio:** {res.get('edificio', 'N/A')}")
-            st.write(f"**Piso:** {res.get('piso', 'N/A')}")
+            st.markdown(f"**Nombre:** {str(res.get('nombre', '')).upper()}")
+            st.markdown(f"**Edificio:** {str(res.get('edificio', '')).upper()}")
+            st.markdown(f"**Piso:** {str(res.get('piso', '')).upper()}")
         with col_mapa:
-            nombre_archivo = normalizar_edificio(res.get('edificio', ''))
-            st.markdown('<div class="map-container">', unsafe_allow_html=True)
-            st.image(f"imagenes/{nombre_archivo}.jpg", use_container_width=True)
-            st.markdown('</div>', unsafe_allow_html=True)
+            archivo = normalizar_edificio(res.get('edificio', ''))
+            st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
 
-# CASO: Inicio o sin resultados
-else:
-    if seleccion_mapa == "Inicio" and not query_actual:
-        st.image("imagenes/general.jpg", use_container_width=True)
-    elif query_actual:
-        st.warning(f"No se encontró información para '{query_actual}'")
+elif seleccion_mapa == "Inicio":
+    st.image("imagenes/general.jpg", use_container_width=True)
