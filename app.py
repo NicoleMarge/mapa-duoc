@@ -129,7 +129,7 @@ with col_nav:
                               horizontal=True, label_visibility="collapsed", on_change=limpiar_busqueda)
 
 with col_bus:
-    st.text_input("Buscador:", placeholder="Busca tu sala...(ejemplo 412 o PA-412)", label_visibility="collapsed", key="busqueda_sala")
+    st.text_input("Buscador:", placeholder="Busca tu sala...(412 o PA-412)", label_visibility="collapsed", key="busqueda_sala")
 
 # Botones de Categorías
 cat_cols = st.columns([1, 1, 1.3, 1.2, 1.2, 4])
