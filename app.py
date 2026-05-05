@@ -56,14 +56,6 @@ st.markdown(f"""
         margin-bottom: 20px;
     }}
 
-    /* Estilo para el recuadro de información de la imagen 8 */
-    .info-card {{
-        border: 2px solid #000000;
-        padding: 20px;
-        border-radius: 5px;
-        background-color: white;
-    }}
-
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
@@ -72,6 +64,7 @@ st.markdown(f"""
         border: 1px solid #e9ecef;
         box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
         width: 100%;
+        transition: 0.3s;
     }}
     </style>
     
@@ -128,6 +121,7 @@ with col_bus:
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
 
+# Botones de categorías actualizados
 cat_cols = st.columns([1, 1, 1.3, 1.2, 1.2, 1.3, 2.7])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
@@ -139,12 +133,13 @@ with cat_cols[5]: st.button("🏥 Enferm.", on_click=cambiar_busqueda, args=("AC
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN (MODIFICADA)
+# 4. LÓGICA DE VISUALIZACIÓN
 # ==========================================
 query_actual = st.session_state["busqueda_sala"]
 resultados = pd.DataFrame()
 titulo_seccion = ""
 
+# Filtrado específico para el botón de Enfermería Zócalo
 if query_actual == "ACCION_ENFERMERIA_ZOCALO":
     resultados = df[
         (df['nombre'].astype(str).str.lower().str.contains("enfermería|enfermeria", na=False)) & 
@@ -163,7 +158,7 @@ elif seleccion_mapa != "Inicio":
 if not resultados.empty:
     st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
-    # Si hay múltiples resultados (como al filtrar por edificio)
+    # Vista para múltiples resultados (Tabla sin índices)
     if len(resultados) > 1 and query_actual != "ACCION_ENFERMERIA_ZOCALO":
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
@@ -175,23 +170,21 @@ if not resultados.empty:
             archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
     
-    # Si es un resultado único (como buscar "lc3" o usar el botón Enfermería)
+    # Vista para resultado único (Información compacta + Piso)
     else:
         res = resultados.iloc[0]
-        col_info, col_mapa = st.columns([5, 5])
-        
+        col_info, col_mapa = st.columns([4, 6])
         with col_info:
-            # Estructura visual de la imagen de referencia
             st.markdown(f"""
-                <div class="info-card">
-                    <h3>Información del recinto seleccionado</h3>
-                    <br>
-                    <h1 style='font-size: 40px;'>{str(res['nombre']).upper()}</h1>
-                    <hr>
-                    <h2 style='color: #004680;'>{str(res['edificio']).upper()}</h2>
+                <div style="border: 2px solid #004680; padding: 15px; border-radius: 10px; background-color: #f8f9fa;">
+                    <p style="margin-bottom: 5px; color: #666; font-weight: bold; font-size: 14px;">Información del recinto seleccionado</p>
+                    <h2 style="margin-top: 0; color: #1a1a1a; font-size: 22px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+                        {str(res['nombre']).upper()}
+                    </h2>
+                    <p style="margin: 8px 0; font-size: 16px;"><strong>Edificio:</strong> {str(res['edificio']).upper()}</p>
+                    <p style="margin: 8px 0; font-size: 16px; color: #004680;"><strong>Piso:</strong> {str(res['piso']).upper()}</p>
                 </div>
             """, unsafe_allow_html=True)
-            
         with col_mapa:
             archivo = normalizar_edificio(res['edificio'])
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
