@@ -12,15 +12,16 @@ st.set_page_config(page_title="Mapa Duoc UC", layout="wide", initial_sidebar_sta
 
 def get_base64_image(image_path):
     try:
-        with open(image_path, "rb") as img_file:
-            return base64.b64encode(img_file.read()).decode()
+        if os.path.exists(image_path):
+            with open(image_path, "rb") as img_file:
+                return base64.b64encode(img_file.read()).decode()
+        return None
     except Exception:
         return None
 
-# Carga de imágenes
+# Carga de imágenes (Verifica que el nombre coincida exactamente: Logo_duoc.jpg)
 img_base64 = get_base64_image("imagenes/sede.jpg")
-# Se actualiza a .jpg según tu indicación
-logo_base64 = get_base64_image("imagenes/logo_duoc.jpg") 
+logo_base64 = get_base64_image("imagenes/Logo_duoc.jpg") 
 
 bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
 
@@ -62,12 +63,15 @@ st.markdown(f"""
 
     div.stButton > button {{
         border-radius: 12px;
-        background-color: rgba(255, 255, 255, 0.95);
+        background-color: white;
         color: #1a1a1a;
         font-weight: 700;
         border: 1px solid #e9ecef;
-        box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
+        box-shadow: 0px 4px 10px rgba(0,0,0,0.05);
         width: 100%;
+        white-space: nowrap;
+        padding: 10px 2px;
+        font-size: 14px;
     }}
     </style>
     
@@ -115,7 +119,7 @@ def limpiar_busqueda():
 
 col_nav, col_bus = st.columns([6, 4])
 with col_nav:
-    seleccion_mapa = st.radio("Navegación:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
+    seleccion_mapa = st.radio("Nav:", ["Inicio", "Edificio 1", "Edificio 2", "Edificio 3"], 
                               horizontal=True, label_visibility="collapsed", on_change=limpiar_busqueda)
 
 with col_bus:
@@ -124,13 +128,14 @@ with col_bus:
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
 
-cat_cols = st.columns([1, 1, 1.3, 1.2, 1.2, 1.3, 2.7])
-with cat_cols[0]: st.button("Baños", on_click=cambiar_busqueda, args=("Baño",))
-with cat_cols[1]: st.button("CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[2]: st.button("Punto", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
-with cat_cols[3]: st.button("Bibliot.", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[4]: st.button("Alim.", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
-with cat_cols[5]: st.button("Enferm.", on_click=cambiar_busqueda, args=("ACCION_ENFERMERIA_ZOCALO",))
+# Botones con nombres completos y espacio suficiente
+cat_cols = st.columns([1, 1, 1.6, 1.4, 1.5, 1.4, 2])
+with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
+with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
+with cat_cols[2]: st.button("💡 Punto Estudiantil", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: st.button("📚 Biblioteca", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
+with cat_cols[4]: st.button("🍴 Alimentación", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
+with cat_cols[5]: st.button("🏥 Enfermería", on_click=cambiar_busqueda, args=("ACCION_ENFERMERIA_ZOCALO",))
 
 st.markdown("---")
 
@@ -175,10 +180,10 @@ if not resultados.empty:
         col_info, col_mapa = st.columns([4, 6])
         
         with col_info:
-            # Recuadro de información estilizado según image_1e2dc6.jpg
+            # Recuadro compacto
             st.markdown(f"""
-                <div style="border: 1.5px solid #004680; padding: 15px; border-radius: 8px; background-color: #fcfcfc; margin-bottom: 25px;">
-                    <p style="margin-bottom: 10px; color: #555; font-size: 13px;">Información del recinto seleccionado</p>
+                <div style="border: 1.5px solid #004680; padding: 15px; border-radius: 8px; background-color: #fcfcfc; margin-bottom: 20px;">
+                    <p style="margin-bottom: 5px; color: #555; font-size: 13px;">Información del recinto seleccionado</p>
                     <h3 style="margin-top: 0; color: #000; font-size: 20px; font-weight: bold; border-bottom: 0.5px solid #eee; padding-bottom: 10px;">
                         {str(res['nombre']).upper()}
                     </h3>
@@ -187,13 +192,11 @@ if not resultados.empty:
                 </div>
             """, unsafe_allow_html=True)
             
-            # Logo Duoc UC debajo del recuadro
+            # Mostrar Logo_duoc.jpg
             if logo_base64:
-                st.markdown(f"""
-                    <div style="text-align: left; padding-left: 5px;">
-                        <img src="data:image/jpg;base64,{logo_base64}" width="180">
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f'<img src="data:image/jpg;base64,{logo_base64}" width="180">', unsafe_allow_html=True)
+            else:
+                st.image("imagenes/Logo_duoc.jpg", width=180)
             
         with col_mapa:
             archivo = normalizar_edificio(res['edificio'])
