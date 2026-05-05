@@ -19,7 +19,8 @@ def get_base64_image(image_path):
     except Exception:
         return None
 
-img_base64 = get_base64_image("imagenes/sede.jpg")
+# Carga de imágenes de fondo y logos
+img_base64 = get_base64_image("imagenes/general.jpg")
 logo_base64 = get_base64_image("imagenes/Logo_duoc.jpg") 
 
 bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
@@ -122,7 +123,7 @@ with col_nav:
                               horizontal=True, label_visibility="collapsed", on_change=limpiar_busqueda)
 
 with col_bus:
-    display_text = "" if st.session_state["busqueda_sala"] == "ACCION_ENFERMERIA_ZOCALO" else st.session_state["busqueda_sala"]
+    display_text = "" if st.session_state["busqueda_sala"] == "ACCION_ENFERMERIA_ZOCAL" else st.session_state["busqueda_sala"]
     nueva_busqueda = st.text_input("Buscador:", value=display_text, placeholder="Busca tu sala...", label_visibility="collapsed")
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
@@ -171,9 +172,9 @@ if not resultados.empty:
             vista.columns = ['Lugar', 'Edificio', 'Piso']
             st.write(vista.reset_index(drop=True).to_html(index=False, escape=False), unsafe_allow_html=True)
         with col_mapa:
-            # SI LA BÚSQUEDA ES "BAÑO", MOSTRAMOS EL MAPA GENERAL (sede.jpg)
-            if query_actual.lower() == "baño":
-                st.image("imagenes/sede.jpg", use_container_width=True)
+            # SI LA BÚSQUEDA ES "BAÑO" O CATEGORÍA GENERAL, MOSTRAMOS EL MAPA GENERAL
+            if query_actual.lower() in ["baño", "alimentación", "biblioteca", "punto estudiantil"]:
+                st.image("imagenes/general.jpg", use_container_width=True)
             else:
                 archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
                 st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
