@@ -123,11 +123,12 @@ with col_nav:
                               horizontal=True, label_visibility="collapsed", on_change=limpiar_busqueda)
 
 with col_bus:
-    display_text = "" if st.session_state["busqueda_sala"] == "ACCION_ENFERMERIA_ZOCAL" else st.session_state["busqueda_sala"]
+    display_text = "" if st.session_state["busqueda_sala"] == "ACCION_ENFERMERIA_ZOCALO" else st.session_state["busqueda_sala"]
     nueva_busqueda = st.text_input("Buscador:", value=display_text, placeholder="Busca tu sala...", label_visibility="collapsed")
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
 
+# Botones de categorías
 cat_cols = st.columns([1, 1, 1.6, 1.4, 1.5, 1.4, 2])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
@@ -163,7 +164,7 @@ elif seleccion_mapa != "Inicio":
 if not resultados.empty:
     st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
-    # CASO: Múltiples resultados (Como el botón Baños)
+    # CASO: Múltiples resultados (Muestra la tabla y el mapa general)
     if len(resultados) > 1 and query_actual != "ACCION_ENFERMERIA_ZOCALO":
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
@@ -172,14 +173,10 @@ if not resultados.empty:
             vista.columns = ['Lugar', 'Edificio', 'Piso']
             st.write(vista.reset_index(drop=True).to_html(index=False, escape=False), unsafe_allow_html=True)
         with col_mapa:
-            # SI LA BÚSQUEDA ES "BAÑO" O CATEGORÍA GENERAL, MOSTRAMOS EL MAPA GENERAL
-            if query_actual.lower() in ["baño", "alimentación", "biblioteca", "punto estudiantil"]:
-                st.image("imagenes/general.jpg", use_container_width=True)
-            else:
-                archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
-                st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
+            # Forzamos a mostrar 'general.jpg' cuando hay muchos resultados (como Baños)
+            st.image("imagenes/general.jpg", use_container_width=True)
     
-    # CASO: Resultado único
+    # CASO: Resultado único (Muestra información detallada y mapa del edificio específico)
     else:
         res = resultados.iloc[0]
         col_info, col_mapa = st.columns([4, 6])
