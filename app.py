@@ -19,7 +19,6 @@ def get_base64_image(image_path):
     except Exception:
         return None
 
-# Carga de imágenes (Verifica que el nombre coincida exactamente: Logo_duoc.jpg)
 img_base64 = get_base64_image("imagenes/sede.jpg")
 logo_base64 = get_base64_image("imagenes/Logo_duoc.jpg") 
 
@@ -128,7 +127,6 @@ with col_bus:
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
 
-# Botones con nombres completos y espacio suficiente
 cat_cols = st.columns([1, 1, 1.6, 1.4, 1.5, 1.4, 2])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
@@ -164,6 +162,7 @@ elif seleccion_mapa != "Inicio":
 if not resultados.empty:
     st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
+    # CASO: Múltiples resultados (Como el botón Baños)
     if len(resultados) > 1 and query_actual != "ACCION_ENFERMERIA_ZOCALO":
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
@@ -172,15 +171,18 @@ if not resultados.empty:
             vista.columns = ['Lugar', 'Edificio', 'Piso']
             st.write(vista.reset_index(drop=True).to_html(index=False, escape=False), unsafe_allow_html=True)
         with col_mapa:
-            archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
-            st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
+            # SI LA BÚSQUEDA ES "BAÑO", MOSTRAMOS EL MAPA GENERAL (sede.jpg)
+            if query_actual.lower() == "baño":
+                st.image("imagenes/sede.jpg", use_container_width=True)
+            else:
+                archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
+                st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
     
+    # CASO: Resultado único
     else:
         res = resultados.iloc[0]
         col_info, col_mapa = st.columns([4, 6])
-        
         with col_info:
-            # Recuadro compacto
             st.markdown(f"""
                 <div style="border: 1.5px solid #004680; padding: 15px; border-radius: 8px; background-color: #fcfcfc; margin-bottom: 20px;">
                     <p style="margin-bottom: 5px; color: #555; font-size: 13px;">Información del recinto seleccionado</p>
@@ -191,13 +193,10 @@ if not resultados.empty:
                     <p style="margin: 0; font-size: 15px; color: #004680; font-weight: bold;"><strong>Piso:</strong> {str(res['piso']).upper()}</p>
                 </div>
             """, unsafe_allow_html=True)
-            
-            # Mostrar Logo_duoc.jpg
             if logo_base64:
                 st.markdown(f'<img src="data:image/jpg;base64,{logo_base64}" width="180">', unsafe_allow_html=True)
             else:
                 st.image("imagenes/Logo_duoc.jpg", width=180)
-            
         with col_mapa:
             archivo = normalizar_edificio(res['edificio'])
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
