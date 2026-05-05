@@ -17,7 +17,11 @@ def get_base64_image(image_path):
     except Exception:
         return None
 
+# Carga de imágenes
 img_base64 = get_base64_image("imagenes/sede.jpg")
+# Se actualiza a .jpg según tu indicación
+logo_base64 = get_base64_image("imagenes/logo_duoc.jpg") 
+
 bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
 
 st.markdown(f"""
@@ -64,7 +68,6 @@ st.markdown(f"""
         border: 1px solid #e9ecef;
         box-shadow: 0px 4px 10px rgba(0,0,0,0.1);
         width: 100%;
-        transition: 0.3s;
     }}
     </style>
     
@@ -121,14 +124,13 @@ with col_bus:
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
 
-# Botones de categorías actualizados
 cat_cols = st.columns([1, 1, 1.3, 1.2, 1.2, 1.3, 2.7])
-with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
-with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
-with cat_cols[2]: st.button("💡 Punto", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
-with cat_cols[3]: st.button("📚 Bibliot.", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
-with cat_cols[4]: st.button("🍴 Alim.", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
-with cat_cols[5]: st.button("🏥 Enferm.", on_click=cambiar_busqueda, args=("ACCION_ENFERMERIA_ZOCALO",))
+with cat_cols[0]: st.button("Baños", on_click=cambiar_busqueda, args=("Baño",))
+with cat_cols[1]: st.button("CASE", on_click=cambiar_busqueda, args=("CASE",))
+with cat_cols[2]: st.button("Punto", on_click=cambiar_busqueda, args=("PUNTO ESTUDIANTIL",))
+with cat_cols[3]: st.button("Bibliot.", on_click=cambiar_busqueda, args=("BIBLIOTECA",))
+with cat_cols[4]: st.button("Alim.", on_click=cambiar_busqueda, args=("ALIMENTACIÓN",))
+with cat_cols[5]: st.button("Enferm.", on_click=cambiar_busqueda, args=("ACCION_ENFERMERIA_ZOCALO",))
 
 st.markdown("---")
 
@@ -139,7 +141,6 @@ query_actual = st.session_state["busqueda_sala"]
 resultados = pd.DataFrame()
 titulo_seccion = ""
 
-# Filtrado específico para el botón de Enfermería Zócalo
 if query_actual == "ACCION_ENFERMERIA_ZOCALO":
     resultados = df[
         (df['nombre'].astype(str).str.lower().str.contains("enfermería|enfermeria", na=False)) & 
@@ -158,7 +159,6 @@ elif seleccion_mapa != "Inicio":
 if not resultados.empty:
     st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
-    # Vista para múltiples resultados (Tabla sin índices)
     if len(resultados) > 1 and query_actual != "ACCION_ENFERMERIA_ZOCALO":
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
@@ -170,21 +170,31 @@ if not resultados.empty:
             archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
     
-    # Vista para resultado único (Información compacta + Piso)
     else:
         res = resultados.iloc[0]
         col_info, col_mapa = st.columns([4, 6])
+        
         with col_info:
+            # Recuadro de información estilizado según image_1e2dc6.jpg
             st.markdown(f"""
-                <div style="border: 2px solid #004680; padding: 15px; border-radius: 10px; background-color: #f8f9fa;">
-                    <p style="margin-bottom: 5px; color: #666; font-weight: bold; font-size: 14px;">Información del recinto seleccionado</p>
-                    <h2 style="margin-top: 0; color: #1a1a1a; font-size: 22px; border-bottom: 1px solid #ddd; padding-bottom: 10px;">
+                <div style="border: 1.5px solid #004680; padding: 15px; border-radius: 8px; background-color: #fcfcfc; margin-bottom: 25px;">
+                    <p style="margin-bottom: 10px; color: #555; font-size: 13px;">Información del recinto seleccionado</p>
+                    <h3 style="margin-top: 0; color: #000; font-size: 20px; font-weight: bold; border-bottom: 0.5px solid #eee; padding-bottom: 10px;">
                         {str(res['nombre']).upper()}
-                    </h2>
-                    <p style="margin: 8px 0; font-size: 16px;"><strong>Edificio:</strong> {str(res['edificio']).upper()}</p>
-                    <p style="margin: 8px 0; font-size: 16px; color: #004680;"><strong>Piso:</strong> {str(res['piso']).upper()}</p>
+                    </h3>
+                    <p style="margin: 10px 0 5px 0; font-size: 15px;"><strong>Edificio:</strong> {str(res['edificio']).upper()}</p>
+                    <p style="margin: 0; font-size: 15px; color: #004680; font-weight: bold;"><strong>Piso:</strong> {str(res['piso']).upper()}</p>
                 </div>
             """, unsafe_allow_html=True)
+            
+            # Logo Duoc UC debajo del recuadro
+            if logo_base64:
+                st.markdown(f"""
+                    <div style="text-align: left; padding-left: 5px;">
+                        <img src="data:image/jpg;base64,{logo_base64}" width="180">
+                    </div>
+                """, unsafe_allow_html=True)
+            
         with col_mapa:
             archivo = normalizar_edificio(res['edificio'])
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
