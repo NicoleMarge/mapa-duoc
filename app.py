@@ -19,8 +19,9 @@ def get_base64_image(image_path):
     except Exception:
         return None
 
-# Carga de imágenes de fondo y logos
-img_base64 = get_base64_image("imagenes/general.jpg")
+# Mantenemos 'sede.jpg' para el fondo del banner superior
+img_base64 = get_base64_image("imagenes/sede.jpg")
+# Logo con L mayúscula corregido
 logo_base64 = get_base64_image("imagenes/Logo_duoc.jpg") 
 
 bg_style = f'background-image: url("data:image/jpg;base64,{img_base64}");' if img_base64 else 'background-color: #004680;'
@@ -128,7 +129,6 @@ with col_bus:
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
 
-# Botones de categorías
 cat_cols = st.columns([1, 1, 1.6, 1.4, 1.5, 1.4, 2])
 with cat_cols[0]: st.button("🚻 Baños", on_click=cambiar_busqueda, args=("Baño",))
 with cat_cols[1]: st.button("🎓 CASE", on_click=cambiar_busqueda, args=("CASE",))
@@ -164,7 +164,6 @@ elif seleccion_mapa != "Inicio":
 if not resultados.empty:
     st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
-    # CASO: Múltiples resultados (Muestra la tabla y el mapa general)
     if len(resultados) > 1 and query_actual != "ACCION_ENFERMERIA_ZOCALO":
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
@@ -173,10 +172,13 @@ if not resultados.empty:
             vista.columns = ['Lugar', 'Edificio', 'Piso']
             st.write(vista.reset_index(drop=True).to_html(index=False, escape=False), unsafe_allow_html=True)
         with col_mapa:
-            # Forzamos a mostrar 'general.jpg' cuando hay muchos resultados (como Baños)
-            st.image("imagenes/general.jpg", use_container_width=True)
+            # Si se presionó Baños o la búsqueda arroja varios, mostrar 'general.jpg'
+            if query_actual.lower() == "baño":
+                st.image("imagenes/general.jpg", use_container_width=True)
+            else:
+                archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
+                st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
     
-    # CASO: Resultado único (Muestra información detallada y mapa del edificio específico)
     else:
         res = resultados.iloc[0]
         col_info, col_mapa = st.columns([4, 6])
@@ -191,10 +193,12 @@ if not resultados.empty:
                     <p style="margin: 0; font-size: 15px; color: #004680; font-weight: bold;"><strong>Piso:</strong> {str(res['piso']).upper()}</p>
                 </div>
             """, unsafe_allow_html=True)
+            
             if logo_base64:
                 st.markdown(f'<img src="data:image/jpg;base64,{logo_base64}" width="180">', unsafe_allow_html=True)
             else:
                 st.image("imagenes/Logo_duoc.jpg", width=180)
+            
         with col_mapa:
             archivo = normalizar_edificio(res['edificio'])
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
