@@ -125,7 +125,7 @@ with col_nav:
 
 with col_bus:
     display_text = "" if st.session_state["busqueda_sala"] == "ACCION_ENFERMERIA_ZOCALO" else st.session_state["busqueda_sala"]
-    nueva_busqueda = st.text_input("Buscador:", value=display_text, placeholder="Busca tu sala...", label_visibility="collapsed")
+    nueva_busqueda = st.text_input("Buscador:", value=display_text, placeholder="Busca tu sala...(412 o PA-412)", label_visibility="collapsed")
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
 
