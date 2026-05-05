@@ -142,7 +142,7 @@ with cat_cols[4]: st.button("🍴 Alimentación", on_click=cambiar_busqueda, arg
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN
+# 4. LÓGICA DE VISUALIZACIÓN (CON TABLA LIMPIA)
 # ==========================================
 query_actual = st.session_state["busqueda_sala"]
 resultados = pd.DataFrame()
@@ -160,17 +160,20 @@ elif seleccion_mapa != "Inicio" and not df.empty:
 
 # Renderizar Resultados
 if not resultados.empty:
-    # Barra verde solo con el nombre
     st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
     if len(resultados) > 1 or seleccion_mapa != "Inicio":
-        # Vista de Listado (Tabla + Mapa)
+        # Vista de Listado (Tabla sin números + Mapa)
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
             st.markdown("### Opciones Disponibles")
             vista = resultados[['nombre', 'edificio', 'piso']].copy()
             vista.columns = ['Lugar', 'Edificio', 'Piso']
-            st.table(vista)
+            
+            # Resetear índice y convertir a HTML ocultando la columna de índice
+            vista = vista.reset_index(drop=True)
+            st.write(vista.to_html(index=False, escape=False), unsafe_allow_html=True)
+            
         with col_mapa:
             ed_ref = str(resultados.iloc[0].get('edificio', ''))
             archivo = normalizar_edificio(ed_ref)
