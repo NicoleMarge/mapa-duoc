@@ -56,6 +56,14 @@ st.markdown(f"""
         margin-bottom: 20px;
     }}
 
+    /* Estilo para el recuadro de información de la imagen 8 */
+    .info-card {{
+        border: 2px solid #000000;
+        padding: 20px;
+        border-radius: 5px;
+        background-color: white;
+    }}
+
     div.stButton > button {{
         border-radius: 12px;
         background-color: rgba(255, 255, 255, 0.95);
@@ -115,10 +123,7 @@ with col_nav:
                               horizontal=True, label_visibility="collapsed", on_change=limpiar_busqueda)
 
 with col_bus:
-    # Mostramos el texto amigable si es la acción de enfermería, de lo contrario mostramos la búsqueda normal
     display_text = "" if st.session_state["busqueda_sala"] == "ACCION_ENFERMERIA_ZOCALO" else st.session_state["busqueda_sala"]
-    
-    # Usamos un callback para actualizar el estado correctamente al escribir manualmente
     nueva_busqueda = st.text_input("Buscador:", value=display_text, placeholder="Busca tu sala...", label_visibility="collapsed")
     if nueva_busqueda != display_text:
         st.session_state["busqueda_sala"] = nueva_busqueda
@@ -134,7 +139,7 @@ with cat_cols[5]: st.button("🏥 Enferm.", on_click=cambiar_busqueda, args=("AC
 st.markdown("---")
 
 # ==========================================
-# 4. LÓGICA DE VISUALIZACIÓN
+# 4. LÓGICA DE VISUALIZACIÓN (MODIFICADA)
 # ==========================================
 query_actual = st.session_state["busqueda_sala"]
 resultados = pd.DataFrame()
@@ -155,11 +160,11 @@ elif seleccion_mapa != "Inicio":
     resultados = df[df['edificio'].astype(str).str.upper().str.contains(termino, na=False)]
     titulo_seccion = termino
 
-# Renderizado de resultados
 if not resultados.empty:
     st.markdown(f'<div class="success-text">✅ {titulo_seccion}</div>', unsafe_allow_html=True)
     
-    if len(resultados) > 1 or seleccion_mapa != "Inicio":
+    # Si hay múltiples resultados (como al filtrar por edificio)
+    if len(resultados) > 1 and query_actual != "ACCION_ENFERMERIA_ZOCALO":
         col_tabla, col_mapa = st.columns([5, 5])
         with col_tabla:
             st.markdown("### Opciones Disponibles")
@@ -169,16 +174,27 @@ if not resultados.empty:
         with col_mapa:
             archivo = normalizar_edificio(resultados.iloc[0].get('edificio', ''))
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
+    
+    # Si es un resultado único (como buscar "lc3" o usar el botón Enfermería)
     else:
         res = resultados.iloc[0]
-        st.subheader("Detalle de Ubicación")
-        col_info, col_mapa = st.columns([4, 6])
+        col_info, col_mapa = st.columns([5, 5])
+        
         with col_info:
-            st.markdown(f"**Nombre:** {str(res['nombre']).upper()}")
-            st.markdown(f"**Edificio:** {str(res['edificio']).upper()}")
-            st.markdown(f"**Piso:** {str(res['piso']).upper()}")
+            # Estructura visual de la imagen de referencia
+            st.markdown(f"""
+                <div class="info-card">
+                    <h3>Información del recinto seleccionado</h3>
+                    <br>
+                    <h1 style='font-size: 40px;'>{str(res['nombre']).upper()}</h1>
+                    <hr>
+                    <h2 style='color: #004680;'>{str(res['edificio']).upper()}</h2>
+                </div>
+            """, unsafe_allow_html=True)
+            
         with col_mapa:
             archivo = normalizar_edificio(res['edificio'])
             st.image(f"imagenes/{archivo}.jpg", use_container_width=True)
+
 elif seleccion_mapa == "Inicio":
     st.image("imagenes/general.jpg", use_container_width=True)
